@@ -26,6 +26,7 @@ class AttendanceService {
       'attendance',
       where: 'userId = ?',
       whereArgs: [userId],
+      orderBy: 'date DESC',
     );
     return List.generate(maps.length, (i) {
       return AttendanceModel.fromMap(maps[i]);
@@ -45,5 +46,15 @@ class AttendanceService {
   Future<int> deleteAttendance(int id) async {
     final db = await DBConfig.database;
     return await db.delete('attendance', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // New method to insert a request
+  Future<int> insertRequest(AttendanceModel request) async {
+    final db = await DBConfig.database;
+    return await db.insert(
+      'attendance',
+      request.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 }

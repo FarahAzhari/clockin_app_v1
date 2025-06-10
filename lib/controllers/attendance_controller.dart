@@ -9,12 +9,14 @@ class AttendanceController {
   final AttendanceService _attendanceService = AttendanceService();
 
   Future<void> addAttendance({
+    required int userId,
     required String date,
     required String timeIn,
     required String timeOut,
     required String status,
   }) async {
     final attendance = AttendanceModel(
+      userId: userId,
       date: date,
       timeIn: timeIn,
       timeOut: timeOut,
@@ -28,10 +30,11 @@ class AttendanceController {
     return await _attendanceService.getAllAttendances();
   }
 
-  Future<void> updateAttendance(int id, String status) async {
+  Future<void> updateAttendance(int id, int userId, String status) async {
     final now = DateTime.now();
     final attendance = AttendanceModel(
       id: id,
+      userId: userId,
       date: now.toIso8601String(),
       timeIn: '',
       timeOut: now.toIso8601String(),
@@ -99,5 +102,10 @@ class AttendanceController {
     );
 
     await _attendanceService.updateAttendance(updated);
+  }
+
+  // New method to insert a request
+  Future<void> insertRequest(AttendanceModel request) async {
+    await _attendanceService.insertRequest(request);
   }
 }

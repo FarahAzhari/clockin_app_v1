@@ -3,17 +3,21 @@ import 'dart:convert';
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 class AttendanceModel {
   int? id;
-  int? userId;
+  int userId;
   String date;
-  String timeIn;
+  String? timeIn;
   String? timeOut;
+  String? type;
+  String? reason;
   String status;
   AttendanceModel({
     this.id,
-    this.userId,
+    required this.userId,
     required this.date,
-    required this.timeIn,
+    this.timeIn,
     this.timeOut,
+    this.type,
+    this.reason,
     required this.status,
   });
 
@@ -24,6 +28,8 @@ class AttendanceModel {
       'date': date,
       'timeIn': timeIn,
       'timeOut': timeOut,
+      'type': type,
+      'reason': reason,
       'status': status,
     };
   }
@@ -31,10 +37,12 @@ class AttendanceModel {
   factory AttendanceModel.fromMap(Map<String, dynamic> map) {
     return AttendanceModel(
       id: map['id'] != null ? map['id'] as int : null,
-      userId: map['userId'] != null ? map['userId'] as int : null,
+      userId: map['userId'] as int,
       date: map['date'] as String,
-      timeIn: map['timeIn'] as String,
+      timeIn: map['timeIn'] != null ? map['timeIn'] as String : null,
       timeOut: map['timeOut'] != null ? map['timeOut'] as String : null,
+      type: map['type'] != null ? map['type'] as String : null,
+      reason: map['reason'] != null ? map['reason'] as String : null,
       status: map['status'] as String,
     );
   }
