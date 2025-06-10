@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SessionManager {
-  static const _userTokenKey = 'user_token';
+  static const _userIdKey = 'user_id';
   static const _usernameKey = 'username';
   static const _emailKey = 'email';
 
@@ -12,14 +12,21 @@ class SessionManager {
     required String email,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userTokenKey, token);
+    await prefs.setString(_userIdKey, token);
     await prefs.setString(_usernameKey, username);
     await prefs.setString(_emailKey, email);
   }
 
-  Future<String?> getUserToken() async {
+  Future<String?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_userTokenKey);
+    return prefs.getString(_userIdKey);
+  }
+
+  Future<int?> getUserIdAsInt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final idStr = prefs.getString(_userIdKey);
+    if (idStr == null) return null;
+    return int.tryParse(idStr);
   }
 
   Future<String?> getUsername() async {
@@ -34,7 +41,7 @@ class SessionManager {
 
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_userTokenKey);
+    await prefs.remove(_userIdKey);
     await prefs.remove(_usernameKey);
     await prefs.remove(_emailKey);
   }
@@ -45,6 +52,6 @@ class SessionManager {
 
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey(_userTokenKey);
+    return prefs.containsKey(_userIdKey);
   }
 }

@@ -1,5 +1,6 @@
 // (optional) or you can use bloc/provider
 
+import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/data/models/attendance_model.dart';
 import 'package:clockin_app/data/services/attendance_service.dart';
 import 'package:intl/intl.dart';
@@ -44,6 +45,13 @@ class AttendanceController {
   }
 
   Future<void> checkIn() async {
+    final sessionManager = SessionManager();
+    final userId = await sessionManager.getUserIdAsInt(); // get user ID
+
+    if (userId == null) {
+      throw Exception('User not logged in.');
+    }
+
     final now = DateTime.now();
     final today = DateFormat('yyyy-MM-dd').format(now);
     final timeIn = DateFormat('HH:mm:ss').format(now);
@@ -55,6 +63,7 @@ class AttendanceController {
     final status = now.isAfter(thresholdTime) ? 'Late' : 'On Time';
 
     final attendance = AttendanceModel(
+      userId: userId,
       date: today,
       timeIn: timeIn,
       timeOut: '',
@@ -65,16 +74,24 @@ class AttendanceController {
   }
 
   Future<void> checkOut() async {
-    final now = DateTime.now();
-    final allAttendances = await _attendanceService.getAllAttendances();
+    final sessionManager = SessionManager();
+    final userId = await sessionManager.getUserIdAsInt(); // get user ID
 
-    final latest = allAttendances.reversed.firstWhere(
+    if (userId == null) {
+      throw Exception('User not logged in.');
+    }
+
+    final now = DateTime.now();
+    final userAttendances = await _attendanceService.getUserAttendances(userId);
+
+    final latest = userAttendances.reversed.firstWhere(
       (a) => a.timeOut?.isEmpty ?? true,
       orElse: () => throw Exception('No check-in found'),
     );
 
     final updated = AttendanceModel(
       id: latest.id,
+      userId: latest.userId,
       date: latest.date,
       timeIn: latest.timeIn,
       timeOut: DateFormat('HH:mm:ss').format(now),

@@ -20,6 +20,18 @@ class AttendanceService {
     });
   }
 
+  Future<List<AttendanceModel>> getUserAttendances(int userId) async {
+    final db = await DBConfig.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'attendance',
+      where: 'userId = ?',
+      whereArgs: [userId],
+    );
+    return List.generate(maps.length, (i) {
+      return AttendanceModel.fromMap(maps[i]);
+    });
+  }
+
   Future<int> updateAttendance(AttendanceModel attendance) async {
     final db = await DBConfig.database;
     return await db.update(

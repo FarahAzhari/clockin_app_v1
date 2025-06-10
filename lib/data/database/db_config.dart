@@ -13,7 +13,12 @@ class DBConfig {
 
   static Future<Database> _initDatabase() async {
     final path = join(await getDatabasesPath(), DB_NAME);
-    return await openDatabase(path, version: 1, onCreate: _onCreate);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -32,11 +37,25 @@ class DBConfig {
     await db.execute('''
       CREATE TABLE attendance (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER,
         date TEXT,
         timeIn TEXT,
         timeOut TEXT,
-        status TEXT
+        status TEXT,
+        FOREIGN KEY (userId) REFERENCES users (id)
       )
     ''');
+  }
+
+  static Future<void> _onUpgrade(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+      ALTER TABLE attendance ADD COLUMN userId INTEGER;
+    ''');
+    }
   }
 }

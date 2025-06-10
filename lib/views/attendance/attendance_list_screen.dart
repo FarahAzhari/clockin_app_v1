@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:clockin_app/controllers/attendance_controller.dart';
 import 'package:clockin_app/core/constants/app_colors.dart';
+import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/data/models/attendance_model.dart';
 import 'package:clockin_app/data/services/attendance_service.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +18,7 @@ class AttendanceListScreen extends StatefulWidget {
 class _AttendanceListScreenState extends State<AttendanceListScreen> {
   final AttendanceController _attendanceController = AttendanceController();
 
-  late Future<List<AttendanceModel>> _attendanceFuture;
+  late Future<List<AttendanceModel>>? _attendanceFuture;
   AttendanceModel? _todayRecord;
 
   late String _currentDate;
@@ -27,8 +28,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
   @override
   void initState() {
     super.initState();
-    _attendanceFuture = AttendanceService()
-        .getAllAttendances(); // Initialize here
+    _attendanceFuture = _attendanceController.getAllAttendance();
     _refreshList();
     _updateDateTime();
     _timer = Timer.periodic(
@@ -46,7 +46,9 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
   }
 
   Future<void> _refreshList() async {
-    final all = await AttendanceService().getAllAttendances();
+    final userId = await SessionManager().getUserIdAsInt();
+    final all = await AttendanceService().getUserAttendances(userId!);
+
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final todayRecord = all.firstWhere(
       (a) => a.date == today,
