@@ -9,28 +9,6 @@ import 'package:clockin_app/views/attendance/add_temporary.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-// IMPORTANT: Please ensure your 'clockin_app/core/constants/app_colors.dart'
-// file defines the following colors. If not, add them:
-// class AppColors {
-//   static const Color primary = Color(0xFF4A90E2); // Example primary color
-//   static const Color background = Color(0xFFF0F2F5); // Example light background
-//   static const Color error = Color(0xFFD0021B); // Example error color
-//
-//   // Accent colors for status/types
-//   static const Color accentGreen = Colors.green; // For 'On Time' / 'Present'
-//   static const Color accentRed = Colors.red; // For 'Late' / specific 'Absent'
-//   static const Color accentOrange = Colors.orange; // For 'Leave' / 'Sick' / other requests
-//
-//   // Light background colors for cards based on type
-//   static const Color lightGreenBackground = Color(0xFFE8F5E9); // Light green for present
-//   static const Color lightRedBackground = Color(0xFFFFEBEE); // Light red for absent
-//   static const Color lightOrangeBackground = Color(0xFFFFF3E0); // Light orange for requests
-//   // Define other colors used in your app like textDark, textLight, inputFill etc.
-//   static const Color textDark = Color(0xFF333333);
-//   static const Color textLight = Color(0xFF666666);
-//   static const Color inputFill = Color(0xFFFFFFFF);
-// }
-
 class AttendanceListScreen extends StatefulWidget {
   const AttendanceListScreen({super.key});
 
@@ -41,7 +19,7 @@ class AttendanceListScreen extends StatefulWidget {
 class _AttendanceListScreenState extends State<AttendanceListScreen> {
   final AttendanceController _attendanceController = AttendanceController();
   late Future<List<AttendanceModel>> _attendanceFuture; // Removed '?'
-  bool _hasDeleted = false;
+  // bool _hasDeleted = false;
 
   // State variable to hold the currently selected month for filtering.
   // Initialized to the first day of the current month.
@@ -350,7 +328,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                     );
                     // After successful deletion, refresh the list to reflect changes
                     await _refreshList();
-                    _hasDeleted = true; // Set flag for parent screen if needed
+                    // _hasDeleted = true; // Set flag for parent screen if needed
                   }
                 },
               ),
@@ -383,16 +361,17 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Attendance Details'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () {
-            Navigator.pop(context, _hasDeleted);
-          },
-        ),
+        // leading: IconButton(
+        //   icon: const Icon(Icons.arrow_back_ios),
+        //   onPressed: () {
+        //     Navigator.pop(context, _hasDeleted);
+        //   },
+        // ),
         actions: [
           IconButton(
             onPressed: () async {
@@ -403,7 +382,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
               if (result == true) {
                 // If a new attendance was added, refresh the list
                 _refreshList();
-                _hasDeleted = true; // Set flag for parent screen if needed
+                // _hasDeleted = true; // Set flag for parent screen if needed
               }
             },
             icon: const Icon(Icons.add),

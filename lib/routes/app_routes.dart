@@ -5,6 +5,7 @@ class AppRoutes {
   static const main = '/main';
   static const attendanceList = '/attendance/list';
   static const request = '/request';
-  static const report = '/report';
-  static const profile = '/profile';
+  // The following routes are removed as they are now managed internally by MainScreen's IndexedStack
+  // static const report = '/report';
+  // static const profile = '/profile';
 }

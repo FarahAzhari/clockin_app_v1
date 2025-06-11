@@ -6,19 +6,20 @@ import 'package:clockin_app/core/constants/app_colors.dart';
 import 'package:clockin_app/data/local_storage/session_manager.dart'; // Actual SessionManager
 import 'package:clockin_app/data/models/attendance_model.dart'; // Ensure workingHours field is added here
 import 'package:clockin_app/data/services/attendance_service.dart'; // Actual AttendanceService
-import 'package:clockin_app/routes/app_routes.dart';
 import 'package:clockin_app/views/attendance/request_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  // Add a ValueNotifier to the constructor to receive refresh signals
+  final ValueNotifier<bool> refreshNotifier;
+  const HomeScreen({super.key, required this.refreshNotifier});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _HomeScreenState extends State<HomeScreen> {
   // Use actual controllers and services
   final SessionManager _sessionManager = SessionManager();
   final AttendanceController _attendanceController = AttendanceController();
@@ -43,6 +44,10 @@ class _MainScreenState extends State<MainScreen> {
     _loadUserData();
     _updateDateTime();
     _fetchTodayAttendanceAndSummary(); // Combined initial fetch
+
+    // Listen for refresh signals from the MainScreen
+    widget.refreshNotifier.addListener(_handleRefreshSignal);
+
     _timer = Timer.periodic(
       const Duration(seconds: 1),
       (_) => _updateDateTime(),
@@ -52,7 +57,17 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    // Remove the listener to prevent memory leaks
+    widget.refreshNotifier.removeListener(_handleRefreshSignal);
     super.dispose();
+  }
+
+  // Method to handle refresh signals
+  void _handleRefreshSignal() {
+    if (widget.refreshNotifier.value) {
+      _fetchTodayAttendanceAndSummary(); // Re-fetch data for the home screen
+      widget.refreshNotifier.value = false; // Reset the notifier after handling
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -182,9 +197,23 @@ class _MainScreenState extends State<MainScreen> {
       _fetchTodayAttendanceAndSummary(); // Refresh both after check-in
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Check-in failed: $e')));
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.background,
+          title: const Text('Check In Failed'), // Changed title for consistency
+          content: Text('$e'), // Display the actual error message
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'OK',
+                style: TextStyle(color: AppColors.primary),
+              ),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -366,44 +395,44 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.grey,
-        currentIndex: 0, // Set the current index for 'Home'
-        onTap: (index) async {
-          // Handle navigation using named routes
-          if (index == 0) {
-            // Already on home screen, no action needed for current index.
-          } else if (index == 1) {
-            // Navigate to AttendanceListScreen and await result
-            final result = await Navigator.pushNamed(
-              context,
-              AppRoutes.attendanceList,
-            );
-            if (result == true) {
-              // If result is true, it means a deletion occurred, so refetch data
-              _fetchTodayAttendanceAndSummary(); // Refresh both after deletion
-            }
-          } else if (index == 2) {
-            Navigator.pushNamed(context, AppRoutes.report);
-          } else if (index == 3) {
-            Navigator.pushNamed(context, AppRoutes.profile);
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Attendance',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Reports',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-      ),
+      // bottomNavigationBar: BottomNavigationBar(
+      //   type: BottomNavigationBarType.fixed,
+      //   selectedItemColor: AppColors.primary,
+      //   unselectedItemColor: Colors.grey,
+      //   currentIndex: 0, // Set the current index for 'Home'
+      //   onTap: (index) async {
+      //     // Handle navigation using named routes
+      //     if (index == 0) {
+      //       // Already on home screen, no action needed for current index.
+      //     } else if (index == 1) {
+      //       // Navigate to AttendanceListScreen and await result
+      //       final result = await Navigator.pushNamed(
+      //         context,
+      //         AppRoutes.attendanceList,
+      //       );
+      //       if (result == true) {
+      //         // If result is true, it means a deletion occurred, so refetch data
+      //         _fetchTodayAttendanceAndSummary(); // Refresh both after deletion
+      //       }
+      //     } else if (index == 2) {
+      //       Navigator.pushNamed(context, AppRoutes.report);
+      //     } else if (index == 3) {
+      //       Navigator.pushNamed(context, AppRoutes.profile);
+      //     }
+      //   },
+      //   items: const [
+      //     BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.calendar_today),
+      //       label: 'Attendance',
+      //     ),
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.bar_chart),
+      //       label: 'Reports',
+      //     ),
+      //     BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+      //   ],
+      // ),
       // floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       // floatingActionButton: Padding(
       //   padding: const EdgeInsets.only(bottom: 70.0),

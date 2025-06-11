@@ -1,11 +1,9 @@
 import 'package:clockin_app/routes/app_routes.dart';
-import 'package:clockin_app/views/attendance/attendance_list_screen.dart';
+import 'package:clockin_app/views/attendance/request_screen.dart';
 import 'package:clockin_app/views/auth/login_screen.dart';
 import 'package:clockin_app/views/auth/register_screen.dart';
 import 'package:clockin_app/views/auth/splash_screen.dart';
-import 'package:clockin_app/views/main_screen.dart';
-import 'package:clockin_app/views/profile/profile_screen.dart';
-import 'package:clockin_app/views/reports/person_report_screen.dart';
+import 'package:clockin_app/views/main_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -26,13 +24,14 @@ class MyApp extends StatelessWidget {
         '/': (context) => const SplashScreen(),
         AppRoutes.login: (context) => const LoginScreen(),
         AppRoutes.register: (context) => const RegisterScreen(),
-        AppRoutes.main: (context) => MainScreen(),
-        AppRoutes.attendanceList: (context) => AttendanceListScreen(),
-        AppRoutes.report: (context) => const PersonReportScreen(),
-        AppRoutes.profile: (context) => const ProfileScreen(),
+        AppRoutes.main: (context) => MainBottomNavigationBar(),
+        AppRoutes.request: (context) => RequestScreen(),
+        // AppRoutes.attendanceList: (context) => AttendanceListScreen(),
+        // AppRoutes.report: (context) => const PersonReportScreen(),
+        // AppRoutes.profile: (context) => const ProfileScreen(),
       },
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        // primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       // home: SplashScreen(),
