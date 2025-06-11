@@ -18,8 +18,12 @@ class MainBottomNavigationBar extends StatefulWidget {
   );
   static final ValueNotifier<bool> refreshAttendanceNotifier =
       ValueNotifier<bool>(false);
-  // NEW: ValueNotifier for PersonReportScreen
+  // ValueNotifier for PersonReportScreen
   static final ValueNotifier<bool> refreshReportsNotifier = ValueNotifier<bool>(
+    false,
+  );
+  // NEW: ValueNotifier for ProfileScreen
+  static final ValueNotifier<bool> refreshProfileNotifier = ValueNotifier<bool>(
     false,
   );
 
@@ -46,11 +50,14 @@ class _MainBottomNavigationBarState extends State<MainBottomNavigationBar> {
       AttendanceListScreen(
         refreshNotifier: MainBottomNavigationBar.refreshAttendanceNotifier,
       ), // Access via widget name
-      // FIX: Pass the new refreshReportsNotifier to PersonReportScreen
+      // Pass the new refreshReportsNotifier to PersonReportScreen
       PersonReportScreen(
         refreshNotifier: MainBottomNavigationBar.refreshReportsNotifier,
       ), // Content for the third tab
-      const ProfileScreen(), // Content for the fourth tab
+      // FIX: Pass the new refreshProfileNotifier to ProfileScreen
+      ProfileScreen(
+        refreshNotifier: MainBottomNavigationBar.refreshProfileNotifier,
+      ), // Content for the fourth tab
     ];
   }
 
@@ -76,9 +83,14 @@ class _MainBottomNavigationBarState extends State<MainBottomNavigationBar> {
       MainBottomNavigationBar.refreshAttendanceNotifier.value =
           true; // Set value via widget name
     }
-    // NEW: Special handling for when navigating TO the Reports tab (index 2)
+    // Special handling for when navigating TO the Reports tab (index 2)
     else if (index == 2) {
       MainBottomNavigationBar.refreshReportsNotifier.value =
+          true; // Set value via widget name
+    }
+    // NEW: Special handling for when navigating TO the Profile tab (index 3)
+    else if (index == 3) {
+      MainBottomNavigationBar.refreshProfileNotifier.value =
           true; // Set value via widget name
     }
     // You can add more `else if` blocks for other tabs if they also need a refresh
