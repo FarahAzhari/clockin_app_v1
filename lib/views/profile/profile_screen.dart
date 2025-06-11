@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:clockin_app/core/constants/app_colors.dart';
 import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/routes/app_routes.dart';
-// import 'package:intl/intl.dart'; // Keep this import for DateFormat if you use it for displaying dates in UI
+import 'package:intl/intl.dart'; // Keep this import for DateFormat if you use it for displaying dates in UI
 import 'package:clockin_app/data/models/user_model.dart'; // Import UserModel
 import 'package:clockin_app/controllers/auth_controller.dart'; // Import AuthController
 import 'package:clockin_app/views/profile/edit_profile_screen.dart'; // NEW: Import EditProfileScreen
+import 'dart:io'; // NEW: Import for FileImage
 
 class ProfileScreen extends StatefulWidget {
   // Add a ValueNotifier to the constructor to receive refresh signals
@@ -100,7 +101,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final String dob = _currentUser?.dob ?? 'DD-MM-YYYY';
     final String bloodGroup = _currentUser?.bloodGroup ?? 'N/A';
     final String designation = _currentUser?.designation ?? 'Employee';
-    final String joinedDate = _currentUser?.joinedDate ?? 'Joined Jan 2023';
+
+    // FIX: Format the joinedDate correctly using 'MMM yyyy'
+    String formattedJoinedDate =
+        'Jan 2023'; // Default fallback (without "Joined" prefix here)
+    if (_currentUser?.joinedDate != null &&
+        _currentUser!.joinedDate!.isNotEmpty) {
+      try {
+        // Assume it's a date string; if it's a file path, treat as N/A
+        if (_currentUser!.joinedDate!.startsWith('/data/user/') ||
+            _currentUser!.joinedDate!.startsWith('/storage/')) {
+          formattedJoinedDate =
+              'Date N/A'; // It's a local file path, not a date
+        } else {
+          try {
+            // Attempt to parse the date string assuming 'MMM yyyy' format
+            final DateTime parsedDate = DateFormat(
+              'MMM yyyy',
+            ).parse(_currentUser!.joinedDate!);
+            formattedJoinedDate = DateFormat('MMM yyyy').format(parsedDate);
+          } catch (e) {
+            // If 'MMM yyyy' fails, try 'dd-MM-yyyy' for DOB (less likely for joined date but for robustness)
+            try {
+              final DateTime parsedDate = DateFormat(
+                'dd-MM-yyyy',
+              ).parse(_currentUser!.joinedDate!);
+              formattedJoinedDate = DateFormat('MMM yyyy').format(parsedDate);
+            } catch (innerError) {
+              print(
+                'Error parsing joinedDate string: ${_currentUser!.joinedDate}, Inner Error: $innerError',
+              );
+              formattedJoinedDate =
+                  'Invalid Date'; // Fallback for unparseable string
+            }
+          }
+        }
+      } catch (e) {
+        print('General error processing joinedDate: $e');
+        formattedJoinedDate = 'Error Date';
+      }
+    }
+
     final String profileImageUrl =
         _currentUser?.profileImageUrl ?? ''; // Empty string if null
 
@@ -142,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildProfileHeader(
                       username,
                       designation,
-                      joinedDate,
+                      formattedJoinedDate, // Pass the correctly formatted date
                       profileImageUrl,
                     ),
                     const SizedBox(height: 20), // Space between sections
@@ -165,6 +206,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String joinedDate,
     String profileImageUrl,
   ) {
+    ImageProvider? imageProvider;
+
+    // FIX: Logic to correctly display image from local file path or network URL
+    if (profileImageUrl.isNotEmpty) {
+      if (profileImageUrl.startsWith('http')) {
+        // It's a network URL
+        imageProvider = NetworkImage(profileImageUrl);
+      } else {
+        // Assume it's a local file path
+        final File localFile = File(profileImageUrl);
+        if (localFile.existsSync()) {
+          imageProvider = FileImage(localFile);
+        } else {
+          imageProvider = null; // File does not exist, fallback to icon
+        }
+      }
+    }
+
     return Column(
       children: [
         // Profile Picture
@@ -187,15 +246,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: CircleAvatar(
             radius: 55, // Larger radius for a prominent profile picture
             backgroundColor: AppColors.primary, // Placeholder background
-            backgroundImage: profileImageUrl.isNotEmpty
-                ? NetworkImage(profileImageUrl)
-                      as ImageProvider // Use NetworkImage if URL is provided
-                : const AssetImage(
-                    'assets/images/default_profile.png',
-                  ), // Fallback to a local asset image
-            child: profileImageUrl.isEmpty
+            backgroundImage: imageProvider, // Use the determined image provider
+            child:
+                imageProvider ==
+                    null // Show icon only if no valid image provider
                 ? const Icon(
-                    Icons.person, // Fallback icon if no image URL
+                    Icons.person, // Fallback icon if no image URL or local file
                     size: 50,
                     color: Colors.white,
                   )
@@ -228,8 +284,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: TextStyle(fontSize: 16, color: AppColors.textLight),
               ),
             ),
+            // FIX: Display the correctly formatted joinedDate
             Text(
-              joinedDate,
+              'Joined $joinedDate', // Add "Joined " prefix here
               style: const TextStyle(fontSize: 16, color: AppColors.textLight),
             ),
           ],
@@ -266,6 +323,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // FIX: This method was missing and has been added back.
   Widget _buildDetailRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

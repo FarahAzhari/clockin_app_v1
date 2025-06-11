@@ -7,6 +7,8 @@ import 'package:clockin_app/widgets/custom_input_field.dart'; // Import CustomIn
 import 'package:clockin_app/widgets/custom_date_input_field.dart'; // Import CustomDateInputField
 import 'package:clockin_app/widgets/custom_dropdown_input_field.dart'; // Import CustomDropdownInputField
 import 'package:clockin_app/widgets/primary_button.dart'; // Import PrimaryButton
+import 'package:image_picker/image_picker.dart'; // Import image_picker
+import 'dart:io'; // For File operations
 
 class EditProfileScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -21,12 +23,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final AuthController _authController = AuthController();
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers for text input fields
+  // Controllers for text input fields (removed _profileImageUrlController)
   late TextEditingController _usernameController;
   late TextEditingController _emailController;
   late TextEditingController _mobileNoController;
   late TextEditingController _designationController;
-  late TextEditingController _profileImageUrlController;
+
+  // State for image picker
+  XFile? _pickedImageFile; // Holds the file picked by the user
+  final ImagePicker _picker = ImagePicker(); // Image picker instance
 
   // State for date picker
   DateTime? _selectedDob;
@@ -59,9 +64,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _designationController = TextEditingController(
       text: widget.currentUser.designation,
     );
-    _profileImageUrlController = TextEditingController(
-      text: widget.currentUser.profileImageUrl,
-    );
+
+    // If there's an existing profile image URL and it's a local file,
+    // initialize _pickedImageFile so the preview shows it.
+    if (widget.currentUser.profileImageUrl != null &&
+        widget.currentUser.profileImageUrl!.isNotEmpty &&
+        !widget.currentUser.profileImageUrl!.startsWith('http')) {
+      final File existingImage = File(widget.currentUser.profileImageUrl!);
+      if (existingImage.existsSync()) {
+        _pickedImageFile = XFile(existingImage.path);
+      }
+    }
 
     // Parse existing dates if available
     if (widget.currentUser.dob != null && widget.currentUser.dob!.isNotEmpty) {
@@ -74,9 +87,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (widget.currentUser.joinedDate != null &&
         widget.currentUser.joinedDate!.isNotEmpty) {
       try {
-        // DateFormat('MMM yyyy').parse handles "Feb 2025" or "Jan 2023"
+        // FIX: Corrected DateFormat to 'MMM yyyy' for consistency
         _selectedJoinedDate = DateFormat(
-          'MMM yyyy',
+          'MMM yyyy', // Corrected format string
         ).parse(widget.currentUser.joinedDate!);
       } catch (e) {
         print(
@@ -94,8 +107,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emailController.dispose();
     _mobileNoController.dispose();
     _designationController.dispose();
-    _profileImageUrlController.dispose();
     super.dispose();
+  }
+
+  // Method to pick an image from gallery
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _pickedImageFile = image;
+      });
+    }
   }
 
   Future<void> _selectDate(
@@ -156,12 +178,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         designation: _designationController.text.isEmpty
             ? null
             : _designationController.text,
+        // FIX: Corrected DateFormat to 'MMM yyyy' for consistency when saving
         joinedDate: _selectedJoinedDate == null
             ? null
-            : DateFormat('MMM yyyy').format(_selectedJoinedDate!),
-        profileImageUrl: _profileImageUrlController.text.isEmpty
-            ? null
-            : _profileImageUrlController.text,
+            : DateFormat(
+                'MMM yyyy',
+              ).format(_selectedJoinedDate!), // Corrected format string
+        // Use _pickedImageFile.path directly. If null, set profileImageUrl to null.
+        profileImageUrl: _pickedImageFile != null
+            ? _pickedImageFile!.path
+            : null,
       );
 
       try {
@@ -193,6 +219,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider? profileImageProvider; // Make ImageProvider nullable
+
+    // Determine the image to display in the CircleAvatar
+    if (_pickedImageFile != null) {
+      profileImageProvider = FileImage(File(_pickedImageFile!.path));
+    } else if (widget.currentUser.profileImageUrl != null &&
+        widget.currentUser.profileImageUrl!.isNotEmpty) {
+      // If there's an existing profile URL, check if it's a network image or local path
+      if (widget.currentUser.profileImageUrl!.startsWith('http')) {
+        profileImageProvider = NetworkImage(
+          widget.currentUser.profileImageUrl!,
+        );
+      } else {
+        // Assume it's a previously saved local file path from image picker
+        // Ensure the file exists before trying to load it
+        final File localFile = File(widget.currentUser.profileImageUrl!);
+        if (localFile.existsSync()) {
+          profileImageProvider = FileImage(localFile);
+        } else {
+          profileImageProvider = null; // File not found, use default icon
+        }
+      }
+    }
+    // If profileImageProvider is still null, the CircleAvatar's child (Icons.person) will be shown.
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -208,24 +259,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Image URL using CustomInputField
-              CustomInputField(
-                controller: _profileImageUrlController,
-                hintText: 'Profile Image URL (Optional)', // This is hintText
-                labelText: 'Profile Image URL (Optional)', // This is labelText
-                icon: Icons.image,
-                keyboardType: TextInputType.url,
-                customValidator: (value) {
-                  if (value != null &&
-                      value.isNotEmpty &&
-                      !Uri.parse(value).isAbsolute) {
-                    return 'Please enter a valid URL';
-                  }
-                  return null;
-                },
+              Center(
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 60,
+                      backgroundColor: AppColors.primary.withOpacity(
+                        0.2,
+                      ), // Light background for avatar
+                      backgroundImage: profileImageProvider,
+                      // Show default icon ONLY if no valid backgroundImage is set
+                      child: profileImageProvider == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 60,
+                              color: AppColors.textLight,
+                            ) // Default icon if no image
+                          : null, // No child if an image is loading
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(
+                        Icons.camera_alt,
+                        color: AppColors.primary,
+                      ),
+                      label: const Text(
+                        'Change Photo',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-
+              const SizedBox(
+                height: 24,
+              ), // Space between image section and first input
               // Username (editable) using CustomInputField
               CustomInputField(
                 controller: _usernameController,

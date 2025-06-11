@@ -6,7 +6,6 @@ import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/data/models/attendance_model.dart';
 import 'package:clockin_app/data/services/attendance_service.dart';
 import 'package:clockin_app/views/attendance/add_temporary.dart';
-import 'package:clockin_app/views/attendance/request_screen.dart'; // Import the new RequestScreen
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:clockin_app/views/main_bottom_navigation_bar.dart';
@@ -504,45 +503,6 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
               ),
             ),
           ),
-          // Request button at the bottom of the list, not related to specific list items
-          // Padding(
-          //   padding: const EdgeInsets.all(16.0),
-          //   child: ElevatedButton.icon(
-          //     onPressed: () async {
-          //       final result = await Navigator.push(
-          //         context,
-          //         MaterialPageRoute(builder: (_) => const RequestScreen()),
-          //       );
-          //       if (result == true) {
-          //         _refreshList(); // Refresh attendance list after a request
-          //         // Signal HomeScreen to refresh as well if request affects its summary
-          //         MainBottomNavigationBar.refreshHomeNotifier.value = true;
-          //       }
-          //     },
-          //     icon: const Icon(
-          //       Icons.add_task,
-          //       color: AppColors.primary,
-          //     ), // Changed icon color
-          //     label: const Text(
-          //       'Request (from Attendance List)',
-          //       style: TextStyle(
-          //         color: AppColors.primary,
-          //         fontSize: 18,
-          //       ), // Changed text color
-          //     ),
-          //     style: ElevatedButton.styleFrom(
-          //       backgroundColor: AppColors.background, // Changed background
-          //       side: const BorderSide(
-          //         color: AppColors.primary,
-          //         width: 2,
-          //       ), // Added border
-          //       shape: RoundedRectangleBorder(
-          //         borderRadius: BorderRadius.circular(30),
-          //       ), // Rounded corners
-          //       padding: const EdgeInsets.symmetric(vertical: 15),
-          //     ),
-          //   ),
-          // ),
         ],
       ),
     );
