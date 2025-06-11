@@ -5,6 +5,7 @@ import 'package:clockin_app/views/auth/register_screen.dart';
 import 'package:clockin_app/views/auth/splash_screen.dart';
 import 'package:clockin_app/views/main_screen.dart';
 import 'package:clockin_app/views/profile/profile_screen.dart';
+import 'package:clockin_app/views/reports/person_report_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -27,7 +28,7 @@ class MyApp extends StatelessWidget {
         AppRoutes.register: (context) => const RegisterScreen(),
         AppRoutes.main: (context) => MainScreen(),
         AppRoutes.attendanceList: (context) => AttendanceListScreen(),
-        // AppRoutes.report: (context) => const ReportScreen(),
+        AppRoutes.report: (context) => const PersonReportScreen(),
         AppRoutes.profile: (context) => const ProfileScreen(),
       },
       theme: ThemeData(

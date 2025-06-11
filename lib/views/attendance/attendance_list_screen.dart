@@ -6,9 +6,7 @@ import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/data/models/attendance_model.dart';
 import 'package:clockin_app/data/services/attendance_service.dart';
 import 'package:clockin_app/views/attendance/add_temporary.dart';
-import 'package:clockin_app/views/attendance/request_screen.dart'; // Import the new RequestScreen
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class AttendanceListScreen extends StatefulWidget {
   const AttendanceListScreen({super.key});
@@ -21,11 +19,11 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
   final AttendanceController _attendanceController = AttendanceController();
 
   late Future<List<AttendanceModel>>? _attendanceFuture;
-  AttendanceModel? _todayRecord;
 
-  late String _currentDate;
-  late String _currentTime;
   late Timer _timer;
+
+  // Flag to indicate if a deletion has occurred
+  bool _hasDeleted = false;
 
   @override
   void initState() {
@@ -40,11 +38,10 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
   }
 
   void _updateDateTime() {
-    final now = DateTime.now();
-    setState(() {
-      _currentDate = DateFormat('yyyy-MM-dd').format(now);
-      _currentTime = DateFormat('HH:mm:ss').format(now);
-    });
+    // This method seems to only trigger a setState,
+    // which might not be necessary if time/date isn't displayed on this screen.
+    // Keeping it as per your original code.
+    setState(() {});
   }
 
   Future<void> _refreshList() async {
@@ -53,11 +50,6 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
     if (userId == null) {
       setState(() {
         _attendanceFuture = Future.value([]);
-        _todayRecord = AttendanceModel(
-          userId: 0,
-          date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
-          status: 'Not Logged In',
-        );
       });
       print('Error: User ID is null. Cannot fetch attendance.');
       return;
@@ -65,29 +57,16 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
 
     final all = await AttendanceService().getUserAttendances(userId);
 
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final todayRecord = all.firstWhere(
-      (a) =>
-          a.date == today &&
-          a.type == null, // Only consider regular attendance for today's record
-      orElse: () => AttendanceModel(
-        userId: userId,
-        date: today,
-        timeIn: null, // Ensure timeIn is null for "No Record Today"
-        timeOut: null, // Ensure timeOut is null for "No Record Today"
-        status: 'No Record Today',
-      ),
-    );
-
     setState(() {
       _attendanceFuture = Future.value(all);
-      _todayRecord = todayRecord;
     });
   }
 
   @override
   void dispose() {
     _timer.cancel();
+    // Removed Navigator.pop from dispose to prevent "deactivated widget" error.
+    // The result will now be passed when the user explicitly taps the back button.
     super.dispose();
   }
 
@@ -99,7 +78,12 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
     } else if (attendance.status.toLowerCase() == 'on time') {
       statusColor = Colors.green;
     } else if (attendance.status.toLowerCase() == 'requested') {
-      statusColor = Colors.deepOrangeAccent; // Color for requested items
+      statusColor = const Color.fromARGB(
+        255,
+        228,
+        205,
+        4,
+      ); // Color for requested items
     } else {
       statusColor = Colors.grey;
     }
@@ -163,10 +147,15 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
 
               if (confirmed == true) {
                 await _attendanceController.removeAttendance(attendance.id!);
+                if (!mounted)
+                  return; // Check if the widget is still in the tree
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Attendance deleted')),
                 );
-                _refreshList();
+                // Refresh list locally first
+                await _refreshList();
+                // Set the flag to true because a deletion occurred
+                _hasDeleted = true;
               }
             },
           ),
@@ -235,131 +224,21 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
 
               if (confirmed == true) {
                 await _attendanceController.removeAttendance(attendance.id!);
+                if (!mounted)
+                  return; // Check if the widget is still in the tree
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Request deleted')),
                 );
-                _refreshList();
+                // Refresh list locally first
+                await _refreshList();
+                // Set the flag to true because a deletion occurred
+                _hasDeleted = true;
               }
             },
           ),
         ),
       );
     }
-  }
-
-  TextStyle _labelStyle() => const TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w500,
-    color: AppColors.textDark,
-  );
-
-  Widget _buildActionCard() {
-    final hasCheckedIn =
-        _todayRecord != null &&
-        _todayRecord!.timeIn != null &&
-        _todayRecord!.timeIn!.isNotEmpty;
-    final hasCheckedOut =
-        _todayRecord != null && (_todayRecord!.timeOut?.isNotEmpty ?? false);
-
-    return Card(
-      color: AppColors.background,
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Date: $_currentDate", style: _labelStyle()),
-            const SizedBox(height: 4),
-            Text("Time: $_currentTime", style: _labelStyle()),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: hasCheckedIn
-                        ? null
-                        : () async {
-                            await _attendanceController.checkIn();
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Checked in successfully!'),
-                              ),
-                            );
-                            _refreshList();
-                          },
-                    icon: const Icon(Icons.login, color: AppColors.inputFill),
-                    label: const Text(
-                      'Check In',
-                      style: TextStyle(color: AppColors.inputFill),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      disabledBackgroundColor: Colors.grey,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: !hasCheckedIn
-                        ? () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                backgroundColor: AppColors.background,
-                                title: const Text('Check Out Failed'),
-                                content: const Text(
-                                  'You must check in before checking out.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(),
-                                    child: const Text(
-                                      'OK',
-                                      style: TextStyle(
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                        : hasCheckedOut
-                        ? null
-                        : () async {
-                            await _attendanceController.checkOut();
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Checked out successfully!'),
-                              ),
-                            );
-                            _refreshList();
-                          },
-                    icon: const Icon(Icons.logout, color: AppColors.inputFill),
-                    label: const Text(
-                      'Check Out',
-                      style: TextStyle(color: AppColors.inputFill),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      disabledBackgroundColor: Colors.grey,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -371,22 +250,32 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        // Set automaticallyImplyLeading to false to use a custom leading button
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          // Custom back button
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            // Pop with the _hasDeleted flag as result
+            Navigator.pop(context, _hasDeleted);
+          },
+        ),
         actions: [
           IconButton(
             onPressed: () async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const AddTemporary(),
-                ), // It's fine to use const if AddTemporary is stateless, but remove if it has state. I put const here assuming it was added in the previous step. If it still causes an error, remove it.
+                MaterialPageRoute(builder: (_) => const AddTemporary()),
               );
               // If AddTemporary returned true (indicating a successful add), refresh the list
               if (result == true) {
                 _refreshList();
+                // If a temporary attendance was added, it might affect today's record status
+                // so we also set _hasDeleted to true to trigger a refresh in MainScreen
+                _hasDeleted = true;
               }
             },
-            icon: const Icon(Icons.add), // Add const here too for efficiency
+            icon: const Icon(Icons.add),
           ),
         ],
       ),
@@ -412,7 +301,6 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                     bottom: 100,
                   ), // Add padding for the button
                   children: [
-                    _buildActionCard(),
                     if (attendances.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 32),
@@ -423,45 +311,6 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                     else
                       ...attendances.map(_buildAttendanceTile),
                   ],
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RequestScreen(),
-                          ),
-                        );
-                        if (result == true) {
-                          _refreshList();
-                        }
-                      },
-                      icon: const Icon(
-                        Icons.add_task,
-                        color: AppColors.inputFill,
-                      ),
-                      label: const Text(
-                        'Request',
-                        style: TextStyle(
-                          color: AppColors.inputFill,
-                          fontSize: 18,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
               ],
             );

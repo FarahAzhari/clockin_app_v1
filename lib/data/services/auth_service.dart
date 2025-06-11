@@ -1,7 +1,7 @@
 // auth_service.dart
 
-import '../models/user_model.dart';
 import '../database/db_config.dart';
+import '../models/user_model.dart';
 
 class AuthService {
   static const String TABLE_USERS = 'users';
@@ -22,5 +22,13 @@ class AuthService {
   Future<int> register(UserModel user) async {
     final db = await DBConfig.database;
     return await db.insert(TABLE_USERS, user.toMap());
+  }
+
+  Future<List<UserModel>> getAllUsers() async {
+    final db = await DBConfig.database;
+    final List<Map<String, dynamic>> maps = await db.query('users');
+    return List.generate(maps.length, (i) {
+      return UserModel.fromMap(maps[i]);
+    });
   }
 }

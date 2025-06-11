@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
 import 'package:clockin_app/controllers/auth_controller.dart';
-import 'package:clockin_app/widgets/custom_input_field.dart';
-import 'package:clockin_app/widgets/primary_button.dart';
 import 'package:clockin_app/core/constants/app_colors.dart';
 import 'package:clockin_app/core/constants/app_text_styles.dart';
 import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/routes/app_routes.dart';
+import 'package:clockin_app/widgets/custom_input_field.dart';
+import 'package:clockin_app/widgets/primary_button.dart';
+import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,9 +29,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkSession() async {
-    final _isLoggedIn = await SessionManager().isLoggedIn();
-    if (_isLoggedIn) {
-      Navigator.pushReplacementNamed(context, AppRoutes.attendanceList);
+    final isLoggedIn = await SessionManager().isLoggedIn();
+    if (isLoggedIn) {
+      Navigator.pushReplacementNamed(context, AppRoutes.main);
     }
   }
 
