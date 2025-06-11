@@ -347,6 +347,7 @@ class _PersonReportScreenState extends State<PersonReportScreen> {
   Widget _buildSummaryCard(String title, dynamic value, Color color) {
     return Expanded(
       child: Card(
+        color: AppColors.background,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         elevation: 2,
         child: Column(

@@ -343,14 +343,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           ListView(
             padding: const EdgeInsets.only(
-              top: 20,
-              bottom: 80,
+              top: 5,
+              // bottom: 80,
             ), // Adjust padding for app bar and bottom nav
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20.0,
-                  vertical: 10.0,
+                  // vertical: 5.0,
                 ),
                 child: Text(
                   'Welcome, $_userName',
@@ -410,6 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMainActionCard(bool hasCheckedIn, bool hasCheckedOut) {
     return Card(
+      color: AppColors.background,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 6,
@@ -418,6 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -434,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: AppColors.primary),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(30),
                       ),
                       backgroundColor: AppColors.primary.withOpacity(0.1),
                     ),
@@ -454,7 +456,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.grey),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(30),
                       ),
                     ),
                   ),
@@ -550,18 +552,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 _buildTimeDetail(
                   Icons.watch_later_outlined,
+                  '${_todayRecord?.timeOut ?? 'N/A'}', // Use N/A if null
+                  'Check Out',
+                  Colors.redAccent,
+                ),
+                _buildTimeDetail(
+                  Icons.watch_later_outlined,
                   // Use live calculation if not checked out, otherwise use stored value
                   hasCheckedOut
                       ? _todayRecord?.workingHours ?? '00:00:00'
                       : _calculateWorkingHours(),
                   'Working HR\'s',
                   Colors.orange,
-                ),
-                _buildTimeDetail(
-                  Icons.watch_later_outlined,
-                  '${_todayRecord?.timeOut ?? 'N/A'}', // Use N/A if null
-                  'Check Out',
-                  Colors.redAccent,
                 ),
               ],
             ),
@@ -722,6 +724,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSummaryCard(String title, int count, Color color) {
     return Expanded(
       child: Card(
+        color: AppColors.background,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         elevation: 2,
         child: Column(

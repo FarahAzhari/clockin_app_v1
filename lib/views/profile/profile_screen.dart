@@ -245,6 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String bloodGroup,
   ) {
     return Card(
+      color: AppColors.background,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       elevation: 4,
@@ -296,6 +297,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           // Notification Toggle
           Card(
+            color: AppColors.background,
             margin: EdgeInsets.zero, // No extra margin for this card
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
@@ -331,6 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 10), // Space between cards
           // Settings Option (now navigates to EditProfileScreen)
           Card(
+            color: AppColors.background,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
@@ -353,6 +356,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 10), // Space between cards
           // Logout Option
           Card(
+            color: AppColors.background,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
