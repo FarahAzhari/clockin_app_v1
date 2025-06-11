@@ -7,7 +7,7 @@ class AttendanceService {
     final db = await DBConfig.database;
     return await db.insert(
       'attendance',
-      attendance.toMap(),
+      attendance.toMap(), // .toMap() should now include 'workingHours'
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -16,7 +16,9 @@ class AttendanceService {
     final db = await DBConfig.database;
     final List<Map<String, dynamic>> maps = await db.query('attendance');
     return List.generate(maps.length, (i) {
-      return AttendanceModel.fromMap(maps[i]);
+      return AttendanceModel.fromMap(
+        maps[i],
+      ); // .fromMap() should now read 'workingHours'
     });
   }
 
@@ -26,18 +28,35 @@ class AttendanceService {
       'attendance',
       where: 'userId = ?',
       whereArgs: [userId],
-      orderBy: 'date DESC',
+      orderBy: 'date DESC, timeIn DESC', // Order to get latest first
     );
     return List.generate(maps.length, (i) {
-      return AttendanceModel.fromMap(maps[i]);
+      return AttendanceModel.fromMap(
+        maps[i],
+      ); // .fromMap() should now read 'workingHours'
     });
+  }
+
+  // NEW METHOD: Get attendance by ID
+  Future<AttendanceModel?> getAttendanceById(int id) async {
+    final db = await DBConfig.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'attendance',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (maps.isNotEmpty) {
+      return AttendanceModel.fromMap(maps.first);
+    }
+    return null;
   }
 
   Future<int> updateAttendance(AttendanceModel attendance) async {
     final db = await DBConfig.database;
     return await db.update(
       'attendance',
-      attendance.toMap(),
+      attendance.toMap(), // .toMap() should now include 'workingHours'
       where: 'id = ?',
       whereArgs: [attendance.id],
     );
@@ -48,12 +67,12 @@ class AttendanceService {
     return await db.delete('attendance', where: 'id = ?', whereArgs: [id]);
   }
 
-  // New method to insert a request
+  // New method to insert a request (unchanged, but implicitly uses updated AttendanceModel)
   Future<int> insertRequest(AttendanceModel request) async {
     final db = await DBConfig.database;
     return await db.insert(
       'attendance',
-      request.toMap(),
+      request.toMap(), // .toMap() should now include 'workingHours'
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }

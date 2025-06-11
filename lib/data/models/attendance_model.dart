@@ -7,6 +7,7 @@ class AttendanceModel {
   String date;
   String? timeIn;
   String? timeOut;
+  String? workingHours;
   String? type;
   String? reason;
   String status;
@@ -16,6 +17,7 @@ class AttendanceModel {
     required this.date,
     this.timeIn,
     this.timeOut,
+    this.workingHours,
     this.type,
     this.reason,
     required this.status,
@@ -28,6 +30,7 @@ class AttendanceModel {
       'date': date,
       'timeIn': timeIn,
       'timeOut': timeOut,
+      'workingHours': workingHours,
       'type': type,
       'reason': reason,
       'status': status,
@@ -41,6 +44,9 @@ class AttendanceModel {
       date: map['date'] as String,
       timeIn: map['timeIn'] != null ? map['timeIn'] as String : null,
       timeOut: map['timeOut'] != null ? map['timeOut'] as String : null,
+      workingHours: map['workingHours'] != null
+          ? map['workingHours'] as String
+          : null,
       type: map['type'] != null ? map['type'] as String : null,
       reason: map['reason'] != null ? map['reason'] as String : null,
       status: map['status'] as String,

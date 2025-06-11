@@ -13,8 +13,7 @@ class AddTemporary extends StatefulWidget {
 
 class _AddTemporaryState extends State<AddTemporary> {
   final AttendanceController _attendanceController = AttendanceController();
-  final SessionManager _sessionManager =
-      SessionManager(); // Add SessionManager here
+  final SessionManager _sessionManager = SessionManager();
 
   // State variables for date, time-in, time-out, and status
   DateTime? _selectedDate;
@@ -110,6 +109,52 @@ class _AddTemporaryState extends State<AddTemporary> {
     fontWeight: FontWeight.w500,
     color: AppColors.textDark,
   );
+
+  // Helper method to calculate working hours
+  String _calculateWorkingHours() {
+    if (_selectedDate == null ||
+        _selectedTimeIn == null ||
+        _selectedTimeOut == null) {
+      return '00:00:00'; // Cannot calculate if any time/date is missing
+    }
+
+    try {
+      final checkInDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTimeIn!.hour,
+        _selectedTimeIn!.minute,
+      );
+      final checkOutDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTimeOut!.hour,
+        _selectedTimeOut!.minute,
+      );
+
+      // Ensure checkOutDateTime is not before checkInDateTime, if it is,
+      // it means the checkout is on the next day (e.g., overnight shift)
+      // For simplicity, we assume check-out is on the same day for temporary entries.
+      // If overnight shifts are possible, more complex date handling is needed.
+      if (checkOutDateTime.isBefore(checkInDateTime)) {
+        return '00:00:00'; // Or handle as an error/invalid input
+      }
+
+      final Duration duration = checkOutDateTime.difference(checkInDateTime);
+      final int hours = duration.inHours;
+      final int minutes = duration.inMinutes.remainder(60);
+      final int seconds = duration.inSeconds.remainder(
+        60,
+      ); // Not typically precise for manual entry, but included for consistency
+
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    } catch (e) {
+      print('Error calculating working hours in AddTemporary: $e');
+      return '00:00:00';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -364,14 +409,20 @@ class _AddTemporaryState extends State<AddTemporary> {
                                 ).format(checkOutDateTime);
                                 final String statusString = _selectedStatus!;
 
+                                // Calculate working hours
+                                final String workingHours =
+                                    _calculateWorkingHours();
+
                                 try {
-                                  // Pass the userId along with other details
+                                  // Pass the userId and workingHours along with other details
                                   await _attendanceController.addAttendance(
-                                    userId: userId, // <-- PASS USERID HERE
+                                    userId: userId,
                                     date: dateString,
                                     timeIn: timeInString,
                                     timeOut: timeOutString,
                                     status: statusString,
+                                    workingHours:
+                                        workingHours, // <-- PASS WORKING HOURS HERE
                                   );
 
                                   if (!mounted) return;

@@ -4,7 +4,7 @@ import 'package:clockin_app/controllers/attendance_controller.dart'; // Actual A
 // Importing actual classes from your project structure
 import 'package:clockin_app/core/constants/app_colors.dart';
 import 'package:clockin_app/data/local_storage/session_manager.dart'; // Actual SessionManager
-import 'package:clockin_app/data/models/attendance_model.dart';
+import 'package:clockin_app/data/models/attendance_model.dart'; // Ensure workingHours field is added here
 import 'package:clockin_app/data/services/attendance_service.dart'; // Actual AttendanceService
 import 'package:clockin_app/routes/app_routes.dart';
 import 'package:clockin_app/views/attendance/request_screen.dart';
@@ -187,7 +187,11 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _handleCheckOut() async {
     try {
-      await _attendanceController.checkOut();
+      // Calculate working hours before checking out
+      final String workingHours = _calculateWorkingHours();
+      await _attendanceController.checkOut(
+        workingHours: workingHours,
+      ); // Pass working hours
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Checked out successfully!')),
@@ -412,7 +416,6 @@ class _MainScreenState extends State<MainScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -551,7 +554,8 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 _buildTimeDetail(
                   Icons.watch_later_outlined,
-                  _calculateWorkingHours(),
+                  _todayRecord?.workingHours ??
+                      '00:00:00', // Display working hours from model
                   'Working HR\'s',
                   Colors.orange,
                 ),
@@ -590,7 +594,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   String _calculateWorkingHours() {
-    // Use the actual _todayRecord for calculation
     if (_todayRecord == null ||
         _todayRecord!.timeIn == null ||
         _todayRecord!.timeIn!.isEmpty) {

@@ -1,5 +1,3 @@
-// (optional) or you can use bloc/provider
-
 import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/data/models/attendance_model.dart';
 import 'package:clockin_app/data/services/attendance_service.dart';
@@ -14,6 +12,9 @@ class AttendanceController {
     required String timeIn,
     required String timeOut,
     required String status,
+    String? type, // Keep this for requests
+    String? reason, // Keep this for requests
+    String? workingHours, // Accepts workingHours
   }) async {
     final attendance = AttendanceModel(
       userId: userId,
@@ -21,6 +22,9 @@ class AttendanceController {
       timeIn: timeIn,
       timeOut: timeOut,
       status: status,
+      type: type,
+      reason: reason,
+      workingHours: workingHours, // Pass workingHours to model
     );
 
     await _attendanceService.addAttendance(attendance);
@@ -31,16 +35,27 @@ class AttendanceController {
   }
 
   Future<void> updateAttendance(int id, int userId, String status) async {
-    final now = DateTime.now();
-    final attendance = AttendanceModel(
-      id: id,
-      userId: userId,
-      date: now.toIso8601String(),
-      timeIn: '',
-      timeOut: now.toIso8601String(),
-      status: status,
+    // Fetch the existing record to preserve all other fields
+    final existingRecord = await _attendanceService.getAttendanceById(id);
+    if (existingRecord == null) {
+      throw Exception('Attendance record with ID $id not found for update.');
+    }
+
+    // Manually create a new AttendanceModel instance with updated status
+    // and copy all other fields from the existing record.
+    final updated = AttendanceModel(
+      id: existingRecord.id,
+      userId: existingRecord.userId,
+      date: existingRecord.date,
+      timeIn: existingRecord.timeIn,
+      timeOut: existingRecord.timeOut,
+      status: status, // Update status
+      type: existingRecord.type,
+      reason: existingRecord.reason,
+      workingHours: existingRecord.workingHours, // Preserve workingHours
     );
-    await _attendanceService.updateAttendance(attendance);
+
+    await _attendanceService.updateAttendance(updated);
   }
 
   Future<void> removeAttendance(int id) async {
@@ -49,7 +64,7 @@ class AttendanceController {
 
   Future<void> checkIn() async {
     final sessionManager = SessionManager();
-    final userId = await sessionManager.getUserIdAsInt(); // get user ID
+    final userId = await sessionManager.getUserIdAsInt();
 
     if (userId == null) {
       throw Exception('User not logged in.');
@@ -59,10 +74,7 @@ class AttendanceController {
     final today = DateFormat('yyyy-MM-dd').format(now);
     final timeIn = DateFormat('HH:mm:ss').format(now);
 
-    // Define the threshold time (9:00 AM)
     final thresholdTime = DateTime(now.year, now.month, now.day, 9, 0, 0);
-
-    // Compare current time with threshold
     final status = now.isAfter(thresholdTime) ? 'Late' : 'On Time';
 
     final attendance = AttendanceModel(
@@ -71,14 +83,15 @@ class AttendanceController {
       timeIn: timeIn,
       timeOut: '',
       status: status,
+      workingHours: null, // Initialized as null at check-in
     );
 
     await _attendanceService.addAttendance(attendance);
   }
 
-  Future<void> checkOut() async {
+  Future<void> checkOut({String? workingHours}) async {
     final sessionManager = SessionManager();
-    final userId = await sessionManager.getUserIdAsInt(); // get user ID
+    final userId = await sessionManager.getUserIdAsInt();
 
     if (userId == null) {
       throw Exception('User not logged in.');
@@ -86,25 +99,33 @@ class AttendanceController {
 
     final now = DateTime.now();
     final userAttendances = await _attendanceService.getUserAttendances(userId);
+    final today = DateFormat('yyyy-MM-dd').format(now);
 
-    final latest = userAttendances.reversed.firstWhere(
-      (a) => a.timeOut?.isEmpty ?? true,
-      orElse: () => throw Exception('No check-in found'),
+    // Find the latest check-in record for today that has not been checked out yet
+    final latestUncheckedOutRecord = userAttendances.firstWhere(
+      (a) => a.date == today && (a.timeOut?.isEmpty ?? true) && a.type == null,
+      orElse: () => throw Exception(
+        'No active check-in record found for today to check out.',
+      ),
     );
 
+    // Manually create a new AttendanceModel instance with updated timeOut and workingHours
+    // and copy all other fields from the latestUncheckedOutRecord.
     final updated = AttendanceModel(
-      id: latest.id,
-      userId: latest.userId,
-      date: latest.date,
-      timeIn: latest.timeIn,
-      timeOut: DateFormat('HH:mm:ss').format(now),
-      status: latest.status,
+      id: latestUncheckedOutRecord.id,
+      userId: latestUncheckedOutRecord.userId,
+      date: latestUncheckedOutRecord.date,
+      timeIn: latestUncheckedOutRecord.timeIn,
+      timeOut: DateFormat('HH:mm:ss').format(now), // Set check-out time
+      status: latestUncheckedOutRecord.status, // Preserve original status
+      type: latestUncheckedOutRecord.type, // Preserve type
+      reason: latestUncheckedOutRecord.reason, // Preserve reason
+      workingHours: workingHours, // Pass the calculated working hours
     );
 
     await _attendanceService.updateAttendance(updated);
   }
 
-  // New method to insert a request
   Future<void> insertRequest(AttendanceModel request) async {
     await _attendanceService.insertRequest(request);
   }

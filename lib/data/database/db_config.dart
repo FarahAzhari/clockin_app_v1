@@ -36,6 +36,7 @@ class DBConfig {
         date TEXT NOT NULL,
         timeIn TEXT,
         timeOut TEXT,
+        workingHours TEXT,
         type TEXT,
         reason TEXT,
         status TEXT NOT NULL,
