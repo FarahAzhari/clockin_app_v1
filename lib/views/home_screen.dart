@@ -9,6 +9,7 @@ import 'package:clockin_app/data/services/attendance_service.dart'; // Actual At
 import 'package:clockin_app/views/attendance/request_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:clockin_app/views/main_bottom_navigation_bar.dart'; // Import MainBottomNavigationBar to access its static notifier
 
 class HomeScreen extends StatefulWidget {
   // Add a ValueNotifier to the constructor to receive refresh signals
@@ -45,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _updateDateTime();
     _fetchTodayAttendanceAndSummary(); // Combined initial fetch
 
-    // Listen for refresh signals from the MainScreen
+    // Listen for refresh signals for THIS HomeScreen instance
     widget.refreshNotifier.addListener(_handleRefreshSignal);
 
     _timer = Timer.periodic(
@@ -62,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // Method to handle refresh signals
+  // Method to handle refresh signals for HomeScreen
   void _handleRefreshSignal() {
     if (widget.refreshNotifier.value) {
       _fetchTodayAttendanceAndSummary(); // Re-fetch data for the home screen
@@ -194,7 +195,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Checked in successfully!')));
-      _fetchTodayAttendanceAndSummary(); // Refresh both after check-in
+      _fetchTodayAttendanceAndSummary(); // Refresh home after check-in
+
+      // FIX: Signal the AttendanceListScreen to refresh its data
+      MainBottomNavigationBar.refreshAttendanceNotifier.value = true;
     } catch (e) {
       if (!mounted) return;
       showDialog(
@@ -230,7 +234,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Checked out successfully!')),
       );
-      _fetchTodayAttendanceAndSummary(); // Refresh both after check-out
+      _fetchTodayAttendanceAndSummary(); // Refresh home after check-out
+
+      // FIX: Signal the AttendanceListScreen to refresh its data
+      MainBottomNavigationBar.refreshAttendanceNotifier.value = true;
     } catch (e) {
       if (!mounted) return;
       showDialog(
@@ -373,7 +380,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(builder: (_) => const RequestScreen()),
                   );
                   if (result == true) {
-                    _fetchTodayAttendanceAndSummary(); // Refresh both if a request was made
+                    _fetchTodayAttendanceAndSummary(); // Refresh home after request
+                    // FIX: Signal the AttendanceListScreen to refresh as well
+                    MainBottomNavigationBar.refreshAttendanceNotifier.value =
+                        true;
                   }
                 },
                 icon: const Icon(Icons.add_task, color: AppColors.primary),
@@ -395,48 +405,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      // bottomNavigationBar: BottomNavigationBar(
-      //   type: BottomNavigationBarType.fixed,
-      //   selectedItemColor: AppColors.primary,
-      //   unselectedItemColor: Colors.grey,
-      //   currentIndex: 0, // Set the current index for 'Home'
-      //   onTap: (index) async {
-      //     // Handle navigation using named routes
-      //     if (index == 0) {
-      //       // Already on home screen, no action needed for current index.
-      //     } else if (index == 1) {
-      //       // Navigate to AttendanceListScreen and await result
-      //       final result = await Navigator.pushNamed(
-      //         context,
-      //         AppRoutes.attendanceList,
-      //       );
-      //       if (result == true) {
-      //         // If result is true, it means a deletion occurred, so refetch data
-      //         _fetchTodayAttendanceAndSummary(); // Refresh both after deletion
-      //       }
-      //     } else if (index == 2) {
-      //       Navigator.pushNamed(context, AppRoutes.report);
-      //     } else if (index == 3) {
-      //       Navigator.pushNamed(context, AppRoutes.profile);
-      //     }
-      //   },
-      //   items: const [
-      //     BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-      //     BottomNavigationBarItem(
-      //       icon: Icon(Icons.calendar_today),
-      //       label: 'Attendance',
-      //     ),
-      //     BottomNavigationBarItem(
-      //       icon: Icon(Icons.bar_chart),
-      //       label: 'Reports',
-      //     ),
-      //     BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-      //   ],
-      // ),
-      // floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      // floatingActionButton: Padding(
-      //   padding: const EdgeInsets.only(bottom: 70.0),
-      // ),
     );
   }
 
@@ -722,7 +690,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: AppColors.textDark,
                       ),
                     ),
-                    SizedBox(width: 5),
+                    const SizedBox(width: 5),
                     const Icon(
                       Icons.calendar_today,
                       size: 16,

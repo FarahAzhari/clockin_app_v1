@@ -7,9 +7,13 @@ import 'package:clockin_app/data/services/attendance_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart'; // Import fl_chart
+// Import MainBottomNavigationBar to access its static notifier
 
 class PersonReportScreen extends StatefulWidget {
-  const PersonReportScreen({super.key});
+  // NEW: Add a ValueNotifier to the constructor to receive refresh signals
+  final ValueNotifier<bool> refreshNotifier;
+
+  const PersonReportScreen({super.key, required this.refreshNotifier});
 
   @override
   State<PersonReportScreen> createState() => _PersonReportScreenState();
@@ -40,6 +44,31 @@ class _PersonReportScreenState extends State<PersonReportScreen> {
   void initState() {
     super.initState();
     _monthlyAttendanceFuture = _fetchAndCalculateMonthlyReports();
+
+    // NEW: Listen for refresh signals from MainBottomNavigationBar via widget.refreshNotifier.
+    // When the value of the notifier changes, _handleRefreshSignal will be called.
+    widget.refreshNotifier.addListener(_handleRefreshSignal);
+  }
+
+  @override
+  void dispose() {
+    // NEW: Remove the listener to prevent memory leaks when the widget is disposed.
+    widget.refreshNotifier.removeListener(_handleRefreshSignal);
+    super.dispose();
+  }
+
+  // NEW: Method to handle refresh signals from the notifier.
+  void _handleRefreshSignal() {
+    // Check if the notifier's value is true, indicating a refresh is needed.
+    if (widget.refreshNotifier.value) {
+      print(
+        'PersonReportScreen: Refresh signal received, refreshing reports...',
+      );
+      _fetchAndCalculateMonthlyReports(); // Re-fetch and recalculate reports.
+      widget.refreshNotifier.value =
+          false; // Reset the notifier's value to false
+      // so it only triggers once per signal.
+    }
   }
 
   // Fetches attendance data and calculates monthly summaries
@@ -408,14 +437,14 @@ class _PersonReportScreenState extends State<PersonReportScreen> {
                       children: [
                         Text(
                           DateFormat(
-                            'MMM yyyy',
+                            'MMM yyyy', // Fixed to include full year
                           ).format(_selectedMonth).toUpperCase(),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: AppColors.textDark,
                           ),
                         ),
-                        SizedBox(width: 5),
+                        const SizedBox(width: 5),
                         const Icon(
                           Icons.calendar_today,
                           size: 16,
@@ -500,12 +529,31 @@ class _PersonReportScreenState extends State<PersonReportScreen> {
 
                   // Use a Consumer if you use Provider for state management,
                   // otherwise direct use of _pieChartSections is fine
-                  if (_pieChartSections.isEmpty) {
+                  if (_pieChartSections.isEmpty &&
+                      _presentCount + _absentCount + _lateInCount == 0) {
                     return Center(
                       child: Text(
                         'No attendance data for chart for ${DateFormat('MMMM yyyy').format(_selectedMonth)}.',
                       ),
                     );
+                  }
+                  // If there is data but the chart sections are empty,
+                  // ensure _updatePieChartData is called. This can happen
+                  // if _fetchAndCalculateMonthlyReports finishes and updates
+                  // counts, but setState doesn't immediately rebuild the FutureBuilder
+                  // or if totals are 0 and pieChartSections were reset.
+                  // Re-calling here acts as a safeguard.
+                  if (_pieChartSections.isEmpty &&
+                      (_presentCount > 0 ||
+                          _absentCount > 0 ||
+                          _lateInCount > 0)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _updatePieChartData(
+                        _presentCount,
+                        _absentCount,
+                        _lateInCount,
+                      );
+                    });
                   }
 
                   return Padding(

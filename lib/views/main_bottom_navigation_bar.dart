@@ -2,7 +2,7 @@ import 'package:clockin_app/views/home_screen.dart';
 import 'package:clockin_app/views/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:clockin_app/widgets/custom_bottom_navigation_bar.dart'; // Your custom nav bar
-// Your defined named routes
+// Your defined named routes (not directly used by MainBottomNavigationBar for tab switching)
 // Import your actual screen widgets that will be displayed as tabs
 // Your HomeScreen content
 import 'package:clockin_app/views/attendance/attendance_list_screen.dart'; // Your AttendanceListScreen content
@@ -11,24 +11,26 @@ import 'package:clockin_app/views/reports/person_report_screen.dart'; // Your Pe
 class MainBottomNavigationBar extends StatefulWidget {
   const MainBottomNavigationBar({super.key});
 
+  // FIX: Declare ValueNotifiers as static final members of the StatefulWidget itself
+  // This makes them globally accessible using MainBottomNavigationBar.notifierName
+  static final ValueNotifier<bool> refreshHomeNotifier = ValueNotifier<bool>(
+    false,
+  );
+  static final ValueNotifier<bool> refreshAttendanceNotifier =
+      ValueNotifier<bool>(false);
+  // NEW: ValueNotifier for PersonReportScreen
+  static final ValueNotifier<bool> refreshReportsNotifier = ValueNotifier<bool>(
+    false,
+  );
+
   @override
   State<MainBottomNavigationBar> createState() =>
       _MainBottomNavigationBarState();
 }
 
 class _MainBottomNavigationBarState extends State<MainBottomNavigationBar> {
-  // _selectedIndex will control which tab is currently visible in the IndexedStack
-  // and which icon is highlighted in the BottomNavigationBar.
   int _selectedIndex = 0; // Start with Home tab (index 0)
 
-  // A ValueNotifier to signal HomeScreen when it needs to refresh its data.
-  // This is used for cross-tab communication (e.g., Attendance data submitted -> Home refreshes).
-  static final ValueNotifier<bool> refreshHomeNotifier = ValueNotifier<bool>(
-    false,
-  );
-
-  // List of all top-level screens that will be managed by the BottomNavigationBar.
-  // The order here MUST match the order of BottomNavigationBarItems.
   late final List<Widget> _widgetOptions;
 
   @override
@@ -36,10 +38,18 @@ class _MainBottomNavigationBarState extends State<MainBottomNavigationBar> {
     super.initState();
     _widgetOptions = <Widget>[
       // HomeScreen is now the actual content for the first tab.
-      // We pass the refreshNotifier to it so it can listen for external refresh signals.
-      HomeScreen(refreshNotifier: refreshHomeNotifier),
-      const AttendanceListScreen(), // Content for the second tab
-      const PersonReportScreen(), // Content for the third tab
+      // We pass the refreshHomeNotifier to it so it can listen for external refresh signals.
+      HomeScreen(
+        refreshNotifier: MainBottomNavigationBar.refreshHomeNotifier,
+      ), // Access via widget name
+      // AttendanceListScreen: Now accepts refreshAttendanceNotifier to listen for updates.
+      AttendanceListScreen(
+        refreshNotifier: MainBottomNavigationBar.refreshAttendanceNotifier,
+      ), // Access via widget name
+      // FIX: Pass the new refreshReportsNotifier to PersonReportScreen
+      PersonReportScreen(
+        refreshNotifier: MainBottomNavigationBar.refreshReportsNotifier,
+      ), // Content for the third tab
       const ProfileScreen(), // Content for the fourth tab
     ];
   }
@@ -48,34 +58,37 @@ class _MainBottomNavigationBarState extends State<MainBottomNavigationBar> {
   ///
   /// Updates the [_selectedIndex] to switch the displayed screen in the IndexedStack.
   void _onItemTapped(int index) {
-    // We only update the index if it's different to prevent unnecessary
-    // rebuilds if the user taps the already active tab.
     if (_selectedIndex != index) {
       setState(() {
         _selectedIndex = index;
       });
     }
 
-    // Special handling for when returning to Home tab, especially if data
-    // might have changed from another tab (e.g., after submitting attendance).
+    // Special handling for when navigating TO the Home tab (index 0)
+    // This signal tells HomeScreen to refresh its data (e.g., if you came from Attendance tab).
     if (index == 0) {
-      // Signal the HomeScreen to refresh its data.
-      // HomeScreen will listen to this notifier and execute its refresh logic.
-      refreshHomeNotifier.value = true;
+      MainBottomNavigationBar.refreshHomeNotifier.value =
+          true; // Set value via widget name
     }
+    // Special handling for when navigating TO the Attendance tab (index 1)
+    // This signal tells AttendanceListScreen to refresh its data.
+    else if (index == 1) {
+      MainBottomNavigationBar.refreshAttendanceNotifier.value =
+          true; // Set value via widget name
+    }
+    // NEW: Special handling for when navigating TO the Reports tab (index 2)
+    else if (index == 2) {
+      MainBottomNavigationBar.refreshReportsNotifier.value =
+          true; // Set value via widget name
+    }
+    // You can add more `else if` blocks for other tabs if they also need a refresh
+    // when they are explicitly tapped from the bottom navigation bar.
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // The body of the Scaffold now contains the IndexedStack.
-      // IndexedStack keeps all children alive in the widget tree but only displays
-      // the one at the current index, preserving their state.
-      body: IndexedStack(
-        index: _selectedIndex, // Controls which child widget is displayed
-        children: _widgetOptions, // The list of your main tab screens
-      ),
-      // The BottomNavigationBar is placed here, so it persists across all tabs.
+      body: IndexedStack(index: _selectedIndex, children: _widgetOptions),
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex:
             _selectedIndex, // Pass the current selected index for highlighting

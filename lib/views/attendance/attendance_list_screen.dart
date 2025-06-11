@@ -6,11 +6,17 @@ import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/data/models/attendance_model.dart';
 import 'package:clockin_app/data/services/attendance_service.dart';
 import 'package:clockin_app/views/attendance/add_temporary.dart';
+import 'package:clockin_app/views/attendance/request_screen.dart'; // Import the new RequestScreen
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:clockin_app/views/main_bottom_navigation_bar.dart';
 
 class AttendanceListScreen extends StatefulWidget {
-  const AttendanceListScreen({super.key});
+  // FIX: Define the refreshNotifier parameter in the constructor
+  // This parameter will receive the ValueNotifier from MainBottomNavigationBar.
+  final ValueNotifier<bool> refreshNotifier;
+
+  const AttendanceListScreen({super.key, required this.refreshNotifier});
 
   @override
   State<AttendanceListScreen> createState() => _AttendanceListScreenState();
@@ -18,8 +24,8 @@ class AttendanceListScreen extends StatefulWidget {
 
 class _AttendanceListScreenState extends State<AttendanceListScreen> {
   final AttendanceController _attendanceController = AttendanceController();
-  late Future<List<AttendanceModel>> _attendanceFuture; // Removed '?'
-  // bool _hasDeleted = false;
+  late Future<List<AttendanceModel>> _attendanceFuture;
+  // bool _hasDeleted = false; // Removed, as this logic is handled by refreshNotifier now
 
   // State variable to hold the currently selected month for filtering.
   // Initialized to the first day of the current month.
@@ -34,6 +40,32 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
     super.initState();
     // Initialize _attendanceFuture directly by calling _fetchAndFilterAttendances
     _attendanceFuture = _fetchAndFilterAttendances();
+
+    // NEW: Listen for refresh signals from MainBottomNavigationBar via widget.refreshNotifier.
+    // When the value of the notifier changes (e.g., from HomeScreen check-in/out),
+    // _handleRefreshSignal will be called.
+    widget.refreshNotifier.addListener(_handleRefreshSignal);
+  }
+
+  @override
+  void dispose() {
+    // NEW: Remove the listener to prevent memory leaks when the widget is disposed.
+    widget.refreshNotifier.removeListener(_handleRefreshSignal);
+    super.dispose();
+  }
+
+  // NEW: Method to handle refresh signals from the notifier.
+  void _handleRefreshSignal() {
+    // Check if the notifier's value is true, indicating a refresh is needed.
+    if (widget.refreshNotifier.value) {
+      print(
+        'AttendanceListScreen: Refresh signal received, refreshing list...',
+      );
+      _refreshList(); // Trigger the local refresh of the attendance list.
+      widget.refreshNotifier.value =
+          false; // Reset the notifier's value to false
+      // so it only triggers once per signal.
+    }
   }
 
   // Changed method signature to return Future<List<AttendanceModel>>
@@ -74,11 +106,6 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
     setState(() {
       _attendanceFuture = _fetchAndFilterAttendances();
     });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   // Method to show month picker
@@ -167,8 +194,8 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
 
     final DateTime date = DateTime.parse(attendance.date);
     final String formattedDate = DateFormat(
-      'E, MMM d, yyyy',
-    ).format(date); // Changed to yyyy for full year
+      'E, MMM d,yyyy',
+    ).format(date); // Changed to include full year
 
     return Card(
       color: cardBackgroundColor,
@@ -328,7 +355,8 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                     );
                     // After successful deletion, refresh the list to reflect changes
                     await _refreshList();
-                    // _hasDeleted = true; // Set flag for parent screen if needed
+                    // Signal HomeScreen to refresh as well, if deletion affects its summary
+                    MainBottomNavigationBar.refreshHomeNotifier.value = true;
                   }
                 },
               ),
@@ -361,17 +389,12 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading:
+            false, // AppBar is managed by MainBottomNavigationBar, no back button needed
         title: const Text('Attendance Details'),
         backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.background,
+        foregroundColor: Colors.white, // Changed to white for consistency
         elevation: 0,
-        // leading: IconButton(
-        //   icon: const Icon(Icons.arrow_back_ios),
-        //   onPressed: () {
-        //     Navigator.pop(context, _hasDeleted);
-        //   },
-        // ),
         actions: [
           IconButton(
             onPressed: () async {
@@ -379,10 +402,11 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const AddTemporary()),
               );
+              // If AddTemporary returned true (indicating a successful add), refresh the list
               if (result == true) {
-                // If a new attendance was added, refresh the list
                 _refreshList();
-                // _hasDeleted = true; // Set flag for parent screen if needed
+                // Also signal HomeScreen to refresh if new attendance affects its summary
+                MainBottomNavigationBar.refreshHomeNotifier.value = true;
               }
             },
             icon: const Icon(Icons.add),
@@ -425,14 +449,14 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                         Text(
                           // Display selected month and year
                           DateFormat(
-                            'MMM yyyy',
+                            'MMM yyyy', // Ensure year is included for clarity in month selection
                           ).format(_selectedMonth).toUpperCase(),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: AppColors.textDark,
                           ),
                         ),
-                        SizedBox(width: 5),
+                        const SizedBox(width: 5),
                         const Icon(
                           Icons.calendar_today,
                           size: 16,
@@ -480,6 +504,45 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
               ),
             ),
           ),
+          // Request button at the bottom of the list, not related to specific list items
+          // Padding(
+          //   padding: const EdgeInsets.all(16.0),
+          //   child: ElevatedButton.icon(
+          //     onPressed: () async {
+          //       final result = await Navigator.push(
+          //         context,
+          //         MaterialPageRoute(builder: (_) => const RequestScreen()),
+          //       );
+          //       if (result == true) {
+          //         _refreshList(); // Refresh attendance list after a request
+          //         // Signal HomeScreen to refresh as well if request affects its summary
+          //         MainBottomNavigationBar.refreshHomeNotifier.value = true;
+          //       }
+          //     },
+          //     icon: const Icon(
+          //       Icons.add_task,
+          //       color: AppColors.primary,
+          //     ), // Changed icon color
+          //     label: const Text(
+          //       'Request (from Attendance List)',
+          //       style: TextStyle(
+          //         color: AppColors.primary,
+          //         fontSize: 18,
+          //       ), // Changed text color
+          //     ),
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: AppColors.background, // Changed background
+          //       side: const BorderSide(
+          //         color: AppColors.primary,
+          //         width: 2,
+          //       ), // Added border
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(30),
+          //       ), // Rounded corners
+          //       padding: const EdgeInsets.symmetric(vertical: 15),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
