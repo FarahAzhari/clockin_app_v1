@@ -3,6 +3,10 @@ import 'package:clockin_app/core/constants/app_colors.dart';
 import 'package:clockin_app/data/models/user_model.dart';
 import 'package:clockin_app/controllers/auth_controller.dart';
 import 'package:intl/intl.dart';
+import 'package:clockin_app/widgets/custom_input_field.dart'; // Import CustomInputField
+import 'package:clockin_app/widgets/custom_date_input_field.dart'; // Import CustomDateInputField
+import 'package:clockin_app/widgets/custom_dropdown_input_field.dart'; // Import CustomDropdownInputField
+import 'package:clockin_app/widgets/primary_button.dart'; // Import PrimaryButton
 
 class EditProfileScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -133,7 +137,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save(); // Save the form fields
 
-      // FIX: Manually create a new UserModel instance since copyWith is not available
+      // Manually create a new UserModel instance since copyWith is not available
       final updatedUser = UserModel(
         id: widget.currentUser.id, // Preserve existing ID
         username: _usernameController.text,
@@ -204,20 +208,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Image URL
-              TextFormField(
+              // Profile Image URL using CustomInputField
+              CustomInputField(
                 controller: _profileImageUrlController,
-                decoration: InputDecoration(
-                  labelText: 'Profile Image URL (Optional)',
-                  labelStyle: const TextStyle(color: AppColors.textLight),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.image, color: AppColors.primary),
-                ),
+                hintText: 'Profile Image URL (Optional)', // This is hintText
+                labelText: 'Profile Image URL (Optional)', // This is labelText
+                icon: Icons.image,
                 keyboardType: TextInputType.url,
-                validator: (value) {
-                  // Basic URL validation
+                customValidator: (value) {
                   if (value != null &&
                       value.isNotEmpty &&
                       !Uri.parse(value).isAbsolute) {
@@ -228,21 +226,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Username (editable)
-              TextFormField(
+              // Username (editable) using CustomInputField
+              CustomInputField(
                 controller: _usernameController,
-                decoration: InputDecoration(
-                  labelText: 'Username',
-                  labelStyle: const TextStyle(color: AppColors.textLight),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.person,
-                    color: AppColors.primary,
-                  ),
-                ),
-                validator: (value) {
+                hintText: 'Username', // This is hintText
+                labelText: 'Username', // This is labelText
+                icon: Icons.person,
+                customValidator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Username cannot be empty';
                   }
@@ -251,19 +241,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Email (editable)
-              TextFormField(
+              // Email (editable) using CustomInputField
+              CustomInputField(
                 controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  labelStyle: const TextStyle(color: AppColors.textLight),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.email, color: AppColors.primary),
-                ),
+                hintText: 'Email', // This is hintText
+                labelText: 'Email', // This is labelText
+                icon: Icons.email,
                 keyboardType: TextInputType.emailAddress,
-                validator: (value) {
+                customValidator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Email cannot be empty';
                   }
@@ -275,69 +260,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Mobile Number
-              TextFormField(
+              // Mobile Number using CustomInputField
+              CustomInputField(
                 controller: _mobileNoController,
-                decoration: InputDecoration(
-                  labelText: 'Mobile Number',
-                  labelStyle: const TextStyle(color: AppColors.textLight),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.phone, color: AppColors.primary),
-                ),
+                hintText: 'Mobile Number', // This is hintText
+                labelText: 'Mobile Number', // This is labelText
+                icon: Icons.phone,
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 16),
 
-              // Date of Birth
-              GestureDetector(
+              // Date of Birth using CustomDateInputField
+              CustomDateInputField(
+                labelText: 'Date of Birth',
+                icon: Icons.calendar_today,
+                selectedDate: _selectedDob,
                 onTap: () => _selectDate(
                   context,
                   _selectedDob,
                   (date) => _selectedDob = date,
                 ),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: 'Date of Birth',
-                    labelStyle: const TextStyle(color: AppColors.textLight),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.calendar_today,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  child: Text(
-                    _selectedDob == null
-                        ? 'Select DOB'
-                        : DateFormat('dd-MM-yyyy').format(_selectedDob!),
-                    style: TextStyle(
-                      color: _selectedDob == null
-                          ? AppColors.placeholder
-                          : AppColors.textDark,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
+                hintText: 'Select DOB',
               ),
               const SizedBox(height: 16),
 
-              // Blood Group Dropdown
-              DropdownButtonFormField<String>(
+              // Blood Group Dropdown using CustomDropdownInputField
+              CustomDropdownInputField<String>(
+                labelText: 'Blood Group',
+                icon: Icons.bloodtype,
                 value: _selectedBloodGroup,
-                decoration: InputDecoration(
-                  labelText: 'Blood Group',
-                  labelStyle: const TextStyle(color: AppColors.textLight),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.bloodtype,
-                    color: AppColors.primary,
-                  ),
-                ),
+                hintText: 'Select Blood Group',
                 items: _bloodGroups.map((String group) {
                   return DropdownMenuItem<String>(
                     value: group,
@@ -352,73 +304,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Designation
-              TextFormField(
+              // Designation using CustomInputField
+              CustomInputField(
                 controller: _designationController,
-                decoration: InputDecoration(
-                  labelText: 'Designation',
-                  labelStyle: const TextStyle(color: AppColors.textLight),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  prefixIcon: const Icon(Icons.work, color: AppColors.primary),
-                ),
+                hintText: 'Designation', // This is hintText
+                labelText: 'Designation', // This is labelText
+                icon: Icons.work,
               ),
               const SizedBox(height: 16),
 
-              // Joined Date
-              GestureDetector(
+              // Joined Date using CustomDateInputField
+              CustomDateInputField(
+                labelText: 'Joined Date',
+                icon: Icons.date_range,
+                selectedDate: _selectedJoinedDate,
                 onTap: () => _selectDate(
                   context,
                   _selectedJoinedDate,
                   (date) => _selectedJoinedDate = date,
                 ),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: 'Joined Date',
-                    labelStyle: const TextStyle(color: AppColors.textLight),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.date_range,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  child: Text(
-                    _selectedJoinedDate == null
-                        ? 'Select Joined Date'
-                        : DateFormat('MMM yyyy').format(_selectedJoinedDate!),
-                    style: TextStyle(
-                      color: _selectedJoinedDate == null
-                          ? AppColors.placeholder
-                          : AppColors.textDark,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
+                hintText: 'Select Joined Date',
               ),
               const SizedBox(height: 24),
 
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _saveProfile,
-                  icon: const Icon(Icons.save, color: Colors.white),
-                  label: const Text(
-                    'Save Profile',
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
+              // Save Button using PrimaryButton
+              PrimaryButton(label: 'Save Profile', onPressed: _saveProfile),
             ],
           ),
         ),

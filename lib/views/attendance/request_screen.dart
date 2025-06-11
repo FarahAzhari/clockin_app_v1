@@ -4,6 +4,10 @@ import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/data/models/attendance_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:clockin_app/widgets/custom_input_field.dart'; // Import CustomInputField
+import 'package:clockin_app/widgets/custom_date_input_field.dart'; // Import CustomDateInputField
+import 'package:clockin_app/widgets/custom_dropdown_input_field.dart'; // Import CustomDropdownInputField
+import 'package:clockin_app/widgets/primary_button.dart'; // NEW: Import PrimaryButton
 
 class RequestScreen extends StatefulWidget {
   const RequestScreen({super.key});
@@ -58,6 +62,7 @@ class _RequestScreenState extends State<RequestScreen> {
   }
 
   Future<void> _submitRequest() async {
+    // Basic validation
     if (_selectedDate == null) {
       _showSnackBar('Please select a date.');
       return;
@@ -89,10 +94,15 @@ class _RequestScreenState extends State<RequestScreen> {
 
     try {
       await _attendanceController.insertRequest(attendance);
-      _showSnackBar('Request submitted successfully!');
-      Navigator.pop(context, true); // Pop with true to indicate success
+      if (mounted) {
+        // Check if widget is still in the tree
+        _showSnackBar('Request submitted successfully!');
+        Navigator.pop(context, true); // Pop with true to indicate success
+      }
     } catch (e) {
-      _showSnackBar('Failed to submit request: $e');
+      if (mounted) {
+        _showSnackBar('Failed to submit request: $e');
+      }
     }
   }
 
@@ -122,49 +132,22 @@ class _RequestScreenState extends State<RequestScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Date Picker
-            InkWell(
+            // Date Picker using CustomDateInputField
+            CustomDateInputField(
+              labelText: 'Select Date',
+              icon: Icons.calendar_today,
+              selectedDate: _selectedDate,
               onTap: () => _selectDate(context),
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Select Date',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  filled: true,
-                  fillColor: AppColors.inputFill,
-                  prefixIcon: const Icon(
-                    Icons.calendar_today,
-                    color: AppColors.primary,
-                  ),
-                ),
-                baseStyle: const TextStyle(color: AppColors.textDark),
-                child: Text(
-                  _selectedDate == null
-                      ? 'No date chosen'
-                      : DateFormat('yyyy-MM-dd').format(_selectedDate!),
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
+              hintText: 'No date chosen', // Optional hint text
             ),
             const SizedBox(height: 20),
 
-            // Request Type Dropdown
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Request Type',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                filled: true,
-                fillColor: AppColors.inputFill,
-                prefixIcon: const Icon(
-                  Icons.category,
-                  color: AppColors.primary,
-                ),
-              ),
+            // Request Type Dropdown using CustomDropdownInputField
+            CustomDropdownInputField<String>(
+              labelText: 'Request Type',
+              icon: Icons.category,
               value: _selectedRequestType,
-              hint: const Text('Select request type'),
+              hintText: 'Select request type',
               items: _requestTypes.map((type) {
                 return DropdownMenuItem(value: type, child: Text(type));
               }).toList(),
@@ -176,42 +159,34 @@ class _RequestScreenState extends State<RequestScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Reason Text Field
-            TextField(
+            // Reason Text Field using CustomInputField
+            CustomInputField(
               controller: _reasonController,
-              decoration: InputDecoration(
-                labelText: 'Reason for Request',
-                hintText: 'e.g., Annual leave, sick leave, personal matters',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                filled: true,
-                fillColor: AppColors.inputFill,
-                prefixIcon: const Icon(
-                  Icons.edit_note,
-                  color: AppColors.primary,
-                ),
-              ),
-              maxLines: 3,
+              labelText:
+                  'Reason for Request', // This becomes the floating label
+              hintText:
+                  'e.g., Annual leave, sick leave, personal matters', // This remains the hint text inside the field
+              icon: Icons.edit_note,
+              maxLines: 3, // Allow multiline input
+              keyboardType:
+                  TextInputType.multiline, // Set keyboard to multiline
+              fillColor: AppColors.inputFill, // Match previous fillColor
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 15,
+              ), // Adjusted vertical padding
+              customValidator: (value) {
+                // Use customValidator for specific validation
+                if (value == null || value.trim().isEmpty) {
+                  return 'Reason cannot be empty';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 30),
 
-            // Submit Button
-            ElevatedButton.icon(
-              onPressed: _submitRequest,
-              icon: const Icon(Icons.send, color: AppColors.inputFill),
-              label: const Text(
-                'Submit Request',
-                style: TextStyle(color: AppColors.inputFill, fontSize: 18),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
+            // Submit Button using PrimaryButton
+            PrimaryButton(label: 'Submit Request', onPressed: _submitRequest),
           ],
         ),
       ),

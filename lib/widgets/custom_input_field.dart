@@ -3,26 +3,44 @@ import 'package:clockin_app/core/constants/app_colors.dart';
 
 class CustomInputField extends StatelessWidget {
   final TextEditingController controller;
-  final String hintText;
+  final String hintText; // This remains the primary hint text for the field
   final IconData icon;
   final bool isPassword;
   final bool obscureText;
   final VoidCallback? toggleVisibility;
 
+  // NEW: Optional properties for more flexibility
+  final String? labelText; // For a floating label above the input
+  final int? maxLines; // For multi-line text input
+  final TextInputType?
+  keyboardType; // For specifying keyboard type (e.g., multiline, email)
+  final String? Function(String?)?
+  customValidator; // For providing a specific validation function
+  final Color? fillColor; // To override the default fill color
+  final EdgeInsetsGeometry?
+  contentPadding; // To override the default content padding
+
   const CustomInputField({
     super.key,
     required this.controller,
-    required this.hintText,
+    required this.hintText, // Existing required parameter
     required this.icon,
     this.isPassword = false,
     this.obscureText = false,
     this.toggleVisibility,
+    // Initialize new optional parameters
+    this.labelText,
+    this.maxLines = 1, // Default to single line
+    this.keyboardType,
+    this.customValidator, // Renamed to avoid clash with internal _defaultValidator
+    this.fillColor,
+    this.contentPadding,
   });
 
-  // Auto-validator based on field type
+  // Auto-validator based on field type. This will be used if customValidator is not provided.
   String? _defaultValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your $hintText';
+      return 'Please enter your ${hintText.toLowerCase()}';
     }
 
     if (hintText.toLowerCase().contains('email')) {
@@ -53,10 +71,17 @@ class CustomInputField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
-      validator: _defaultValidator,
+      maxLines: maxLines, // Apply maxLines
+      keyboardType: keyboardType, // Apply keyboardType
+      validator:
+          customValidator ??
+          _defaultValidator, // Use custom validator if provided, else default
       style: const TextStyle(fontSize: 16),
       decoration: InputDecoration(
-        hintText: hintText,
+        labelText:
+            labelText, // NEW: Use labelText if provided (for floating label)
+        hintText:
+            hintText, // EXISTING: Continues to be used as hintText (inner placeholder)
         prefixIcon: Icon(icon, color: AppColors.primary),
         suffixIcon: isPassword
             ? IconButton(
@@ -67,23 +92,24 @@ class CustomInputField extends StatelessWidget {
                 onPressed: toggleVisibility,
               )
             : null,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 18,
-        ),
+        contentPadding:
+            contentPadding ??
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         filled: true,
-        fillColor: Colors.grey.shade100,
+        fillColor:
+            fillColor ??
+            Colors.grey.shade100, // Use custom fill color or default
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16), // Rectangular
-          borderSide: BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColors.border),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColors.primary),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
       ),
     );
