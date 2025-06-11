@@ -32,17 +32,17 @@ class _MainScreenState extends State<MainScreen> {
   Timer? _timer;
   AttendanceModel? _todayRecord;
 
-  // Placeholder for attendance summary counts (these would typically come from a service)
-  final int _presentCount = 13;
-  final int _absentCount = 2;
-  final int _lateInCount = 4;
+  // Actual values for attendance summary counts (no longer final)
+  int _presentCount = 0; // Changed from final and initialized to 0
+  int _absentCount = 0; // Changed from final and initialized to 0
+  int _lateInCount = 0; // Changed from final and initialized to 0
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _updateDateTime();
-    _fetchTodayAttendance(); // Initial fetch
+    _fetchTodayAttendanceAndSummary(); // Combined initial fetch
     _timer = Timer.periodic(
       const Duration(seconds: 1),
       (_) => _updateDateTime(),
@@ -60,7 +60,7 @@ class _MainScreenState extends State<MainScreen> {
     final userName = await _sessionManager.getUsername();
     setState(() {
       _userName = userName ?? 'User'; // Default if null
-      // Set location statically as SessionManager does not provide it
+      // Set location statically as SessionManager does not provide it, using your latest provided value
       _location = 'PPKD Jakarta Pusat';
     });
   }
@@ -73,17 +73,21 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  Future<void> _fetchTodayAttendance() async {
+  // Combined function to fetch today's attendance and monthly summary
+  Future<void> _fetchTodayAttendanceAndSummary() async {
     final userId = await _sessionManager.getUserIdAsInt();
 
     if (userId == null) {
-      print('Error: User ID is null. Cannot fetch attendance for today.');
+      print('Error: User ID is null. Cannot fetch attendance data.');
       setState(() {
         _todayRecord = AttendanceModel(
           userId: 0,
           date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
           status: 'Not Logged In',
         );
+        _presentCount = 0;
+        _absentCount = 0;
+        _lateInCount = 0;
       });
       return;
     }
@@ -93,9 +97,13 @@ class _MainScreenState extends State<MainScreen> {
         userId,
       );
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final currentMonth = DateFormat('yyyy-MM').format(DateTime.now());
 
+      // --- Logic for _todayRecord (for the main card) ---
       final todayRecord = allAttendances.firstWhere(
-        (a) => a.date == today && a.type == null, // Only regular attendance
+        (a) =>
+            a.date == today &&
+            a.type == null, // Only regular attendance for today's record
         orElse: () => AttendanceModel(
           userId: userId,
           date: today,
@@ -105,19 +113,58 @@ class _MainScreenState extends State<MainScreen> {
         ),
       );
 
+      // --- Logic for Monthly Summary Counts ---
+      int tempPresentCount = 0;
+      int tempAbsentCount = 0;
+      int tempLateInCount = 0;
+
+      // Filter for records in the current month
+      final monthlyAttendances = allAttendances
+          .where((a) => a.date.startsWith(currentMonth))
+          .toList();
+
+      for (var attendance in monthlyAttendances) {
+        if (attendance.type == null) {
+          // Regular attendance
+          if (attendance.timeIn != null &&
+              attendance.timeIn!.isNotEmpty &&
+              attendance.timeOut != null &&
+              attendance.timeOut!.isNotEmpty) {
+            tempPresentCount++;
+          }
+          if (attendance.status.toLowerCase() == 'late') {
+            tempLateInCount++;
+          }
+        } else {
+          // Request attendance (absences)
+          final attendanceTypeLower = attendance.type!.toLowerCase();
+          if (attendanceTypeLower == 'absent' ||
+              attendanceTypeLower == 'leave' ||
+              attendanceTypeLower == 'sick' ||
+              attendanceTypeLower == 'permission' ||
+              attendanceTypeLower == 'business trip') {
+            tempAbsentCount++;
+          }
+        }
+      }
+
       setState(() {
         _todayRecord = todayRecord;
-        // Optionally update summary counts here if you have methods for them
-        // For now, keeping them static as per original code structure
+        _presentCount = tempPresentCount;
+        _absentCount = tempAbsentCount;
+        _lateInCount = tempLateInCount;
       });
     } catch (e) {
-      print('Error fetching today\'s attendance: $e');
+      print('Error fetching attendance data: $e');
       setState(() {
         _todayRecord = AttendanceModel(
           userId: userId,
           date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
           status: 'Error fetching data',
         );
+        _presentCount = 0;
+        _absentCount = 0;
+        _lateInCount = 0;
       });
     }
   }
@@ -129,7 +176,7 @@ class _MainScreenState extends State<MainScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Checked in successfully!')));
-      _fetchTodayAttendance(); // Refresh status after check-in
+      _fetchTodayAttendanceAndSummary(); // Refresh both after check-in
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -145,7 +192,7 @@ class _MainScreenState extends State<MainScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Checked out successfully!')),
       );
-      _fetchTodayAttendance(); // Refresh status after check-out
+      _fetchTodayAttendanceAndSummary(); // Refresh both after check-out
     } catch (e) {
       if (!mounted) return;
       showDialog(
@@ -288,7 +335,7 @@ class _MainScreenState extends State<MainScreen> {
                     MaterialPageRoute(builder: (_) => const RequestScreen()),
                   );
                   if (result == true) {
-                    _fetchTodayAttendance(); // Refresh data if a request was made
+                    _fetchTodayAttendanceAndSummary(); // Refresh both if a request was made
                   }
                 },
                 icon: const Icon(Icons.add_task, color: AppColors.primary),
@@ -300,7 +347,7 @@ class _MainScreenState extends State<MainScreen> {
                   backgroundColor: AppColors.background,
                   foregroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 15),
-                  side: BorderSide(color: AppColors.primary, width: 2),
+                  side: const BorderSide(color: AppColors.primary, width: 2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -317,11 +364,8 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: 0, // Set the current index for 'Home'
         onTap: (index) async {
           // Handle navigation using named routes
-          // Handle navigation using named routes
           if (index == 0) {
-            // Already on home screen, do nothing or pop to root
-            // if you have multiple nested navigators.
-            // For now, no action needed for current index.
+            // Already on home screen, no action needed for current index.
           } else if (index == 1) {
             // Navigate to AttendanceListScreen and await result
             final result = await Navigator.pushNamed(
@@ -330,14 +374,13 @@ class _MainScreenState extends State<MainScreen> {
             );
             if (result == true) {
               // If result is true, it means a deletion occurred, so refetch data
-              _fetchTodayAttendance();
+              _fetchTodayAttendanceAndSummary(); // Refresh both after deletion
             }
           } else if (index == 2) {
             Navigator.pushNamed(context, AppRoutes.report);
           } else if (index == 3) {
             Navigator.pushNamed(context, AppRoutes.profile);
           }
-          // You can add more navigation logic here for other tabs
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -625,7 +668,7 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
                   children: [
@@ -636,6 +679,7 @@ class _MainScreenState extends State<MainScreen> {
                         color: AppColors.textDark,
                       ),
                     ),
+                    SizedBox(width: 5),
                     const Icon(
                       Icons.calendar_today,
                       size: 16,
@@ -667,33 +711,56 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildSummaryCard(String title, int count, Color color) {
     return Expanded(
       child: Card(
-        color: color.withOpacity(0.1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         elevation: 2,
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+        child: Column(
+          children: [
+            // Top colored bar
+            Container(
+              height: 5.0, // Height of the colored bar
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  topRight: Radius.circular(10),
                 ),
               ),
-              const SizedBox(height: 5),
-              Text(
-                count.toString().padLeft(2, '0'),
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 28,
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                12.0,
+                8.0,
+                12.0,
+                12.0,
+              ), // Adjust padding
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.black87, // Title color is dark
+                      fontWeight: FontWeight.bold, // Title weight seems normal
+                      fontSize: 16, // Adjust title font size
+                    ),
+                  ),
+                  const SizedBox(height: 10), // Space between title and count
+                  Align(
+                    alignment:
+                        Alignment.bottomRight, // Align count to bottom right
+                    child: Text(
+                      count.toString().padLeft(2, '0'),
+                      style: TextStyle(
+                        color: color, // Count color matches the bar
+                        fontWeight: FontWeight.bold,
+                        fontSize: 32, // Adjust count font size
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
