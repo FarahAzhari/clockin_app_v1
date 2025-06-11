@@ -70,6 +70,8 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _currentDate = DateFormat('yyyy-MM-dd').format(now);
       _currentTime = DateFormat('HH:mm:ss a').format(now);
+      // We don't need to explicitly update _todayRecord here;
+      // _calculateWorkingHours will use current time directly if _timeOut is null.
     });
   }
 
@@ -110,6 +112,7 @@ class _MainScreenState extends State<MainScreen> {
           timeIn: null,
           timeOut: null,
           status: 'No Record Today',
+          workingHours: null, // Ensure this is null initially
         ),
       );
 
@@ -188,7 +191,9 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _handleCheckOut() async {
     try {
       // Calculate working hours before checking out
-      final String workingHours = _calculateWorkingHours();
+      final String workingHours = _calculateWorkingHours(
+        useLiveTime: true,
+      ); // Pass true to use current time for final calculation
       await _attendanceController.checkOut(
         workingHours: workingHours,
       ); // Pass working hours
@@ -399,10 +404,10 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 70.0),
-      ),
+      // floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      // floatingActionButton: Padding(
+      //   padding: const EdgeInsets.only(bottom: 70.0),
+      // ),
     );
   }
 
@@ -542,22 +547,24 @@ class _MainScreenState extends State<MainScreen> {
               children: [
                 _buildTimeDetail(
                   Icons.watch_later_outlined,
-                  _todayRecord?.timeIn ?? 'N/A', // Use N/A if null
+                  '${_todayRecord?.timeIn ?? 'N/A'}', // Use N/A if null
                   'Check In',
                   AppColors.primary,
                 ),
                 _buildTimeDetail(
                   Icons.watch_later_outlined,
-                  _todayRecord?.timeOut ?? 'N/A', // Use N/A if null
-                  'Check Out',
-                  Colors.redAccent,
+                  // Use live calculation if not checked out, otherwise use stored value
+                  hasCheckedOut
+                      ? _todayRecord?.workingHours ?? '00:00:00'
+                      : _calculateWorkingHours(),
+                  'Working HR\'s',
+                  Colors.orange,
                 ),
                 _buildTimeDetail(
                   Icons.watch_later_outlined,
-                  _todayRecord?.workingHours ??
-                      '00:00:00', // Display working hours from model
-                  'Working HR\'s',
-                  Colors.orange,
+                  '${_todayRecord?.timeOut ?? 'N/A'}', // Use N/A if null
+                  'Check Out',
+                  Colors.redAccent,
                 ),
               ],
             ),
@@ -593,7 +600,8 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  String _calculateWorkingHours() {
+  // Modified _calculateWorkingHours to optionally use current time for live calculation
+  String _calculateWorkingHours({bool useLiveTime = false}) {
     if (_todayRecord == null ||
         _todayRecord!.timeIn == null ||
         _todayRecord!.timeIn!.isEmpty) {
@@ -601,13 +609,12 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     try {
-      final now = DateTime.now();
       final checkInTimeParts = _todayRecord!.timeIn!.split(':');
       final checkInHour = int.parse(checkInTimeParts[0]);
       final checkInMinute = int.parse(checkInTimeParts[1]);
       final checkInSecond = int.parse(checkInTimeParts[2]);
 
-      // Create DateTime object for check-in on today's date
+      final now = DateTime.now();
       final checkInDateTime = DateTime(
         now.year,
         now.month,
@@ -618,12 +625,14 @@ class _MainScreenState extends State<MainScreen> {
       );
 
       DateTime endDateTime;
-      if (_todayRecord!.timeOut != null && _todayRecord!.timeOut!.isNotEmpty) {
+      // If timeOut is available, use it for calculation, otherwise use current time (now)
+      if (!useLiveTime &&
+          _todayRecord!.timeOut != null &&
+          _todayRecord!.timeOut!.isNotEmpty) {
         final checkOutTimeParts = _todayRecord!.timeOut!.split(':');
         final checkOutHour = int.parse(checkOutTimeParts[0]);
         final checkOutMinute = int.parse(checkOutTimeParts[1]);
         final checkOutSecond = int.parse(checkOutTimeParts[2]);
-        // Create DateTime object for check-out on today's date
         endDateTime = DateTime(
           now.year,
           now.month,
@@ -633,7 +642,8 @@ class _MainScreenState extends State<MainScreen> {
           checkOutSecond,
         );
       } else {
-        endDateTime = now; // If not checked out, use current time
+        endDateTime =
+            now; // Use current time for live calculation or if no checkout yet
       }
 
       final Duration duration = endDateTime.difference(checkInDateTime);

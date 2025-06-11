@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:clockin_app/controllers/attendance_controller.dart';
 import 'package:clockin_app/core/constants/app_colors.dart';
 import 'package:clockin_app/data/local_storage/session_manager.dart';
-import 'package:clockin_app/data/models/attendance_model.dart'; // IMPORTANT: Ensure workingHours is added here
+import 'package:clockin_app/data/models/attendance_model.dart';
 import 'package:clockin_app/data/services/attendance_service.dart';
 import 'package:clockin_app/views/attendance/add_temporary.dart';
 import 'package:flutter/material.dart';
@@ -40,37 +40,120 @@ class AttendanceListScreen extends StatefulWidget {
 
 class _AttendanceListScreenState extends State<AttendanceListScreen> {
   final AttendanceController _attendanceController = AttendanceController();
-  late Future<List<AttendanceModel>>? _attendanceFuture;
+  late Future<List<AttendanceModel>> _attendanceFuture; // Removed '?'
   bool _hasDeleted = false;
+
+  // State variable to hold the currently selected month for filtering.
+  // Initialized to the first day of the current month.
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
 
   @override
   void initState() {
     super.initState();
-    _attendanceFuture = _attendanceController.getAllAttendance();
-    _refreshList();
+    // Initialize _attendanceFuture directly by calling _fetchAndFilterAttendances
+    _attendanceFuture = _fetchAndFilterAttendances();
   }
 
-  Future<void> _refreshList() async {
+  // Changed method signature to return Future<List<AttendanceModel>>
+  Future<List<AttendanceModel>> _fetchAndFilterAttendances() async {
     final userId = await SessionManager().getUserIdAsInt();
 
     if (userId == null) {
-      setState(() {
-        _attendanceFuture = Future.value([]);
-      });
       print('Error: User ID is null. Cannot fetch attendance.');
-      return;
+      return Future.value([]); // Return an empty list if no user ID
     }
 
-    final all = await AttendanceService().getUserAttendances(userId);
+    try {
+      final allAttendances = await AttendanceService().getUserAttendances(
+        userId,
+      );
 
+      // Filter attendances by the selected month (year and month only)
+      final filteredAttendances = allAttendances.where((attendance) {
+        final attendanceDate = DateTime.parse(attendance.date);
+        return attendanceDate.year == _selectedMonth.year &&
+            attendanceDate.month == _selectedMonth.month;
+      }).toList();
+
+      // Sort by date in descending order (latest first)
+      filteredAttendances.sort((a, b) => b.date.compareTo(a.date));
+
+      return filteredAttendances; // Return the filtered list
+    } catch (e) {
+      print('Error fetching and filtering attendance list: $e');
+      throw Exception(
+        'Failed to load attendance: $e',
+      ); // Throw error to FutureBuilder
+    }
+  }
+
+  // _refreshList now just triggers a re-fetch and updates _attendanceFuture
+  Future<void> _refreshList() async {
     setState(() {
-      _attendanceFuture = Future.value(all);
+      _attendanceFuture = _fetchAndFilterAttendances();
     });
   }
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  // Method to show month picker
+  Future<void> _selectMonth(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate:
+          _selectedMonth, // Set initial date to the currently selected month
+      firstDate: DateTime(
+        2000,
+        1,
+        1,
+      ), // Allow selection far back (first day of first month)
+      lastDate: DateTime(
+        2101,
+        12,
+        31,
+      ), // Allow selection far into the future (last day of last month)
+      initialDatePickerMode:
+          DatePickerMode.year, // Start with year selection view
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary, // Header background color
+              onPrimary: Colors.white, // Header text color
+              onSurface: AppColors.textDark, // Body text color
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary, // Button text color
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      // Create a new DateTime that represents the first day of the picked month and year.
+      // This effectively treats the selection as month and year only, ignoring the day selected.
+      final DateTime newSelectedMonth = DateTime(picked.year, picked.month, 1);
+
+      // Only update and refresh if the month or year has actually changed
+      if (newSelectedMonth.year != _selectedMonth.year ||
+          newSelectedMonth.month != _selectedMonth.month) {
+        setState(() {
+          _selectedMonth = newSelectedMonth; // Update selected month
+        });
+        _refreshList(); // Refresh the list with the new month
+      }
+    }
   }
 
   Widget _buildAttendanceTile(AttendanceModel attendance) {
@@ -105,7 +188,9 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
         attendance.type == null && attendance.status.toLowerCase() == 'on time';
 
     final DateTime date = DateTime.parse(attendance.date);
-    final String formattedDate = DateFormat('E, MMM d, yyyy').format(date);
+    final String formattedDate = DateFormat(
+      'E, MMM d, yyyy',
+    ).format(date); // Changed to yyyy for full year
 
     return Card(
       color: cardBackgroundColor,
@@ -200,14 +285,11 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                             'Check Out',
                             timeTextColor,
                           ),
-                          const SizedBox(
-                            width: 20,
-                          ), // Added space for working hours
+                          const SizedBox(width: 20),
                           _buildTimeColumn(
-                            // Display working hours from the model
                             attendance.workingHours ?? '00:00:00',
                             'Working HR\'s',
-                            timeTextColor, // Use same color as other times
+                            timeTextColor,
                           ),
                         ],
                       )
@@ -266,8 +348,9 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Entry cancelled')),
                     );
+                    // After successful deletion, refresh the list to reflect changes
                     await _refreshList();
-                    _hasDeleted = true;
+                    _hasDeleted = true; // Set flag for parent screen if needed
                   }
                 },
               ),
@@ -318,8 +401,9 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                 MaterialPageRoute(builder: (_) => const AddTemporary()),
               );
               if (result == true) {
+                // If a new attendance was added, refresh the list
                 _refreshList();
-                _hasDeleted = true;
+                _hasDeleted = true; // Set flag for parent screen if needed
               }
             },
             icon: const Icon(Icons.add),
@@ -345,31 +429,38 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                     color: Colors.black87,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        DateFormat('MMM').format(DateTime.now()).toUpperCase(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                // Month selection button
+                GestureDetector(
+                  onTap: () => _selectMonth(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          // Display selected month and year
+                          DateFormat(
+                            'MMM yyyy',
+                          ).format(_selectedMonth).toUpperCase(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        SizedBox(width: 5),
+                        const Icon(
+                          Icons.calendar_today,
+                          size: 16,
                           color: AppColors.textDark,
                         ),
-                      ),
-                      SizedBox(width: 5),
-                      const Icon(
-                        Icons.calendar_today,
-                        size: 16,
-                        color: AppColors.textDark,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -392,8 +483,10 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                   final attendances = snapshot.data ?? [];
 
                   if (attendances.isEmpty) {
-                    return const Center(
-                      child: Text('No attendance records found.'),
+                    return Center(
+                      child: Text(
+                        'No attendance records found for ${DateFormat('MMMM yyyy').format(_selectedMonth)}.',
+                      ),
                     );
                   }
 
