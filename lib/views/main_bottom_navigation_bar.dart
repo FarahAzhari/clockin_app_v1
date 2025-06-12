@@ -1,12 +1,9 @@
+import 'package:clockin_app/views/attendance/attendance_list_screen.dart';
 import 'package:clockin_app/views/home_screen.dart';
 import 'package:clockin_app/views/profile/profile_screen.dart';
+import 'package:clockin_app/views/reports/person_report_screen.dart';
+import 'package:clockin_app/widgets/custom_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:clockin_app/widgets/custom_bottom_navigation_bar.dart'; // Your custom nav bar
-// Your defined named routes (not directly used by MainBottomNavigationBar for tab switching)
-// Import your actual screen widgets that will be displayed as tabs
-// Your HomeScreen content
-import 'package:clockin_app/views/attendance/attendance_list_screen.dart'; // Your AttendanceListScreen content
-import 'package:clockin_app/views/reports/person_report_screen.dart'; // Your PersonReportScreen content
 
 class MainBottomNavigationBar extends StatefulWidget {
   const MainBottomNavigationBar({super.key});

@@ -6,9 +6,9 @@ import 'package:clockin_app/data/local_storage/session_manager.dart';
 import 'package:clockin_app/data/models/attendance_model.dart';
 import 'package:clockin_app/data/services/attendance_service.dart';
 import 'package:clockin_app/views/attendance/add_temporary.dart';
+import 'package:clockin_app/views/main_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:clockin_app/views/main_bottom_navigation_bar.dart';
 
 class AttendanceListScreen extends StatefulWidget {
   // FIX: Define the refreshNotifier parameter in the constructor
@@ -249,7 +249,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                                 const Padding(
                                   padding: EdgeInsets.only(right: 4.0),
                                   child: Icon(
-                                    Icons.house,
+                                    Icons.check_circle_outline_rounded,
                                     size: 16,
                                     color: Colors.black54,
                                   ),
@@ -259,7 +259,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                                     ? attendance.type!
                                     : (attendance.status.toLowerCase() ==
                                               'on time'
-                                          ? 'GENERAL'
+                                          ? 'ON TIME'
                                           : attendance.status.toUpperCase()),
                                 style: TextStyle(
                                   color: isRequestType
